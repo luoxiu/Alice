@@ -4,7 +4,7 @@
 
 Next generation of HTTP client for Swift.
 
-## 更多
+---
 
 Alice 还在开发中，我将用[连载的方式](https://v2ambition.com/tags/alice-serial/)记录她的开发过程——
 
@@ -26,11 +26,11 @@ Alice 还在开发中，我将用[连载的方式](https://v2ambition.com/tags/a
 - 我怎么看代码风格
 - ……
 
-<big><b>欢迎关注！😉</b></big>
+<b><big>欢迎关注！😉</big></b>
 
-✨✨✨✨✨✨✨
+✨✨✨
 
-<b><big>注意，</big>这不是教程，而是记录，</b>记录当天所做，分享今日所学。
+<b><big>注意，</big>这不是教程，而是记录，</b>记录当天所做，分享当天所学。
 
 我非常期待交流，你可以通过评论或 [issue](https://github.com/luoxiu/alice/issues) 反馈，发表你的评论和想法，让 Alice 能集百家之长，成一家之言。我期望 Alice 能在交流中的写就，在反馈中完成。
 
