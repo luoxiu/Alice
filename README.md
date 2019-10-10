@@ -6,6 +6,10 @@ Next generation of HTTP client for Swift.
 
 ---
 
+- [Alice 1: 初始化一个 Swift 框架](https://v2ambition.com/posts/alice-1-init-a-swift-package/)
+- [Alice 0: 下一代 HTTP 客户端](https://v2ambition.com/posts/alice-0-next-generation-of-http-client/)
+- [Alice Pre: 起源](https://v2ambition.com/posts/alice-pre/)
+
 Alice 还在开发中，我将用[连载的方式](https://v2ambition.com/tags/alice-serial/)记录她的开发过程——
 
 内容会有技术方面的：
