@@ -10,15 +10,12 @@ public final class Future<Success, Failure> where Failure : Error {
     var _callbacks = CallbackList()
     
     @usableFromInline
-    var _isPending: Bool
-
-    @usableFromInline
     var _result: Result<Success, Failure>?
     
     /// Return true if the future is pending.
     @inlinable
     public var isPending: Bool {
-        return self.lock.withLock { self._isPending }
+        return self.lock.withLock { self._result == nil }
     }
     
     /// Return true if the future is completed.
@@ -41,23 +38,20 @@ public final class Future<Success, Failure> where Failure : Error {
 
     @inlinable
     init() {
-        self._isPending = true
     }
     
     @inlinable
     public init(result: @autoclosure () -> Result<Success, Failure>) {
         self._result = result()
-        self._isPending = false
     }
     
     @inlinable
     func _complete(_ result: Result<Success, Failure>) -> CallbackList {
-        guard self._isPending else {
+        guard self._result == nil else {
             return CallbackList()
         }
         
         self._result = result
-        self._isPending = false
         
         defer {
             self._callbacks = CallbackList()
@@ -76,7 +70,7 @@ public final class Future<Success, Failure> where Failure : Error {
     
     @inlinable
     func _whenComplete(_ callback: @escaping () -> CallbackList) -> CallbackList {
-        guard self._isPending else {
+        guard self._result == nil else {
             return callback()
         }
         
