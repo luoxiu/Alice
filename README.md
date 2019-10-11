@@ -4,11 +4,63 @@
 
 Next generation of HTTP client for Swift.
 
----
+> Still under development...
 
+## Modules
+
+In the current plan, Alice consists of the following four parts:
+
+- Async: A high performance future & promise library.
+- HTTP: An extensible HTTP client library.
+- JSON: An easy to use JSON model library.
+- Layer: A type-safe HTTP abstraction layer library.
+
+These libraries will be split into their own repositories in the official release in the future. Each library can be used separately in your app.
+
+## Usage
+
+### Async(ing)
+
+```swift
+func request(_ url: URL) -> Future<HTTPResponse, HTTPError> {
+    let p = Promise<HTTPResponse, HTTPError>()
+    URLSession.shared.dataTask(with: url) { (data, response, error) in
+        if let e = error {
+            p.fail(HTTPError.session(e))
+            return
+        }
+        p.succeed(HTTPResponse(response, data))
+    }
+    return p.future
+}
+
+request(imageURL)
+    .validate {
+        $0.isValid()
+    }
+    .yield(on: workQ)
+    .tryMap {
+        try ImageDecoder().decode($0.data)
+    }
+    .main {
+        self.imageView = $0
+    }
+    .background {
+        cache.add($0, for: img)
+    }
+    .catch {
+        Log.error($0)
+    }
+```
+
+## 更新
+
+- [Alice 2: Future and promise](https://v2ambition.com/posts/alice-2-future-and-promise/)
 - [Alice 1: 初始化一个 Swift 框架](https://v2ambition.com/posts/alice-1-init-a-swift-package/)
 - [Alice 0: 下一代 HTTP 客户端](https://v2ambition.com/posts/alice-0-next-generation-of-http-client/)
 - [Alice Pre: 起源](https://v2ambition.com/posts/alice-pre/)
+
+## 更多
 
 Alice 还在开发中，我将用[连载的方式](https://v2ambition.com/tags/alice-serial/)记录她的开发过程——
 
