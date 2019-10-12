@@ -1,7 +1,7 @@
 import Foundation
 
 /// A Future represents an eventual result of an asynchronous operation.
-public final class Future<Success, Failure> where Failure : Error {
+public final class Future<Success, Failure>: Thenable where Failure : Error {
     
     @usableFromInline
     let lock = Lock()
