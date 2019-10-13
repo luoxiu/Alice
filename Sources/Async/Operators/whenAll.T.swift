@@ -1,7 +1,7 @@
 /*
  ⚠️️️️⚠️️️️⚠️️️️
  This file was generated from `./whenAll.T.gyb`, you shouldn't modify it directly.
- ./utils/gyb.py ./Sources/FutureQ/Features/whenAll.T.gyb -o ./Sources/FutureQ/Features/whenAll.T.swift --line-directive ''
+ ./utils/gyb.py ./Sources/Async/Operators/whenAll.T.gyb -o ./Sources/Async/Operators/whenAll.T.swift --line-directive ''
  */
 import Foundation
 
@@ -19,7 +19,7 @@ extension Thenable {
                 [thenable1.asVoid(), thenable2.asVoid()]
             )
             .map { _ in
-                (thenable1.inspectWithoutLock()!, thenable2.inspectWithoutLock()!)
+                (thenable1.inspectRoughly()!, thenable2.inspectRoughly()!)
             }
     }
     
@@ -36,7 +36,7 @@ extension Thenable {
                 [thenable1.asVoid(), thenable2.asVoid(), thenable3.asVoid()]
             )
             .map { _ in
-                (thenable1.inspectWithoutLock()!, thenable2.inspectWithoutLock()!, thenable3.inspectWithoutLock()!)
+                (thenable1.inspectRoughly()!, thenable2.inspectRoughly()!, thenable3.inspectRoughly()!)
             }
     }
     
@@ -54,7 +54,7 @@ extension Thenable {
                 [thenable1.asVoid(), thenable2.asVoid(), thenable3.asVoid(), thenable4.asVoid()]
             )
             .map { _ in
-                (thenable1.inspectWithoutLock()!, thenable2.inspectWithoutLock()!, thenable3.inspectWithoutLock()!, thenable4.inspectWithoutLock()!)
+                (thenable1.inspectRoughly()!, thenable2.inspectRoughly()!, thenable3.inspectRoughly()!, thenable4.inspectRoughly()!)
             }
     }
     
@@ -73,7 +73,7 @@ extension Thenable {
                 [thenable1.asVoid(), thenable2.asVoid(), thenable3.asVoid(), thenable4.asVoid(), thenable5.asVoid()]
             )
             .map { _ in
-                (thenable1.inspectWithoutLock()!, thenable2.inspectWithoutLock()!, thenable3.inspectWithoutLock()!, thenable4.inspectWithoutLock()!, thenable5.inspectWithoutLock()!)
+                (thenable1.inspectRoughly()!, thenable2.inspectRoughly()!, thenable3.inspectRoughly()!, thenable4.inspectRoughly()!, thenable5.inspectRoughly()!)
             }
     }
     
@@ -93,7 +93,7 @@ extension Thenable {
                 [thenable1.asVoid(), thenable2.asVoid(), thenable3.asVoid(), thenable4.asVoid(), thenable5.asVoid(), thenable6.asVoid()]
             )
             .map { _ in
-                (thenable1.inspectWithoutLock()!, thenable2.inspectWithoutLock()!, thenable3.inspectWithoutLock()!, thenable4.inspectWithoutLock()!, thenable5.inspectWithoutLock()!, thenable6.inspectWithoutLock()!)
+                (thenable1.inspectRoughly()!, thenable2.inspectRoughly()!, thenable3.inspectRoughly()!, thenable4.inspectRoughly()!, thenable5.inspectRoughly()!, thenable6.inspectRoughly()!)
             }
     }
     
@@ -114,7 +114,7 @@ extension Thenable {
                 [thenable1.asVoid(), thenable2.asVoid(), thenable3.asVoid(), thenable4.asVoid(), thenable5.asVoid(), thenable6.asVoid(), thenable7.asVoid()]
             )
             .map { _ in
-                (thenable1.inspectWithoutLock()!, thenable2.inspectWithoutLock()!, thenable3.inspectWithoutLock()!, thenable4.inspectWithoutLock()!, thenable5.inspectWithoutLock()!, thenable6.inspectWithoutLock()!, thenable7.inspectWithoutLock()!)
+                (thenable1.inspectRoughly()!, thenable2.inspectRoughly()!, thenable3.inspectRoughly()!, thenable4.inspectRoughly()!, thenable5.inspectRoughly()!, thenable6.inspectRoughly()!, thenable7.inspectRoughly()!)
             }
     }
     
@@ -130,7 +130,7 @@ extension Thenable {
                 [thenable1.asVoid(), thenable2.asVoid()]
             )
             .map { _ in
-                (thenable1.inspectWithoutLock()!.value!, thenable2.inspectWithoutLock()!.value!)
+                (thenable1.inspectRoughly()!.value!, thenable2.inspectRoughly()!.value!)
             }
     }
 
@@ -147,7 +147,7 @@ extension Thenable {
                 [thenable1.asVoid(), thenable2.asVoid(), thenable3.asVoid()]
             )
             .map { _ in
-                (thenable1.inspectWithoutLock()!.value!, thenable2.inspectWithoutLock()!.value!, thenable3.inspectWithoutLock()!.value!)
+                (thenable1.inspectRoughly()!.value!, thenable2.inspectRoughly()!.value!, thenable3.inspectRoughly()!.value!)
             }
     }
 
@@ -165,7 +165,7 @@ extension Thenable {
                 [thenable1.asVoid(), thenable2.asVoid(), thenable3.asVoid(), thenable4.asVoid()]
             )
             .map { _ in
-                (thenable1.inspectWithoutLock()!.value!, thenable2.inspectWithoutLock()!.value!, thenable3.inspectWithoutLock()!.value!, thenable4.inspectWithoutLock()!.value!)
+                (thenable1.inspectRoughly()!.value!, thenable2.inspectRoughly()!.value!, thenable3.inspectRoughly()!.value!, thenable4.inspectRoughly()!.value!)
             }
     }
 
@@ -184,7 +184,7 @@ extension Thenable {
                 [thenable1.asVoid(), thenable2.asVoid(), thenable3.asVoid(), thenable4.asVoid(), thenable5.asVoid()]
             )
             .map { _ in
-                (thenable1.inspectWithoutLock()!.value!, thenable2.inspectWithoutLock()!.value!, thenable3.inspectWithoutLock()!.value!, thenable4.inspectWithoutLock()!.value!, thenable5.inspectWithoutLock()!.value!)
+                (thenable1.inspectRoughly()!.value!, thenable2.inspectRoughly()!.value!, thenable3.inspectRoughly()!.value!, thenable4.inspectRoughly()!.value!, thenable5.inspectRoughly()!.value!)
             }
     }
 
@@ -204,7 +204,7 @@ extension Thenable {
                 [thenable1.asVoid(), thenable2.asVoid(), thenable3.asVoid(), thenable4.asVoid(), thenable5.asVoid(), thenable6.asVoid()]
             )
             .map { _ in
-                (thenable1.inspectWithoutLock()!.value!, thenable2.inspectWithoutLock()!.value!, thenable3.inspectWithoutLock()!.value!, thenable4.inspectWithoutLock()!.value!, thenable5.inspectWithoutLock()!.value!, thenable6.inspectWithoutLock()!.value!)
+                (thenable1.inspectRoughly()!.value!, thenable2.inspectRoughly()!.value!, thenable3.inspectRoughly()!.value!, thenable4.inspectRoughly()!.value!, thenable5.inspectRoughly()!.value!, thenable6.inspectRoughly()!.value!)
             }
     }
 
@@ -225,7 +225,7 @@ extension Thenable {
                 [thenable1.asVoid(), thenable2.asVoid(), thenable3.asVoid(), thenable4.asVoid(), thenable5.asVoid(), thenable6.asVoid(), thenable7.asVoid()]
             )
             .map { _ in
-                (thenable1.inspectWithoutLock()!.value!, thenable2.inspectWithoutLock()!.value!, thenable3.inspectWithoutLock()!.value!, thenable4.inspectWithoutLock()!.value!, thenable5.inspectWithoutLock()!.value!, thenable6.inspectWithoutLock()!.value!, thenable7.inspectWithoutLock()!.value!)
+                (thenable1.inspectRoughly()!.value!, thenable2.inspectRoughly()!.value!, thenable3.inspectRoughly()!.value!, thenable4.inspectRoughly()!.value!, thenable5.inspectRoughly()!.value!, thenable6.inspectRoughly()!.value!, thenable7.inspectRoughly()!.value!)
             }
     }
 

@@ -1,7 +1,7 @@
 /*
  ⚠️️️️⚠️️️️⚠️️️️
  This file was generated from `./whenAllVoid.T.gyb`, you shouldn't modify it directly.
- ./utils/gyb.py ./Sources/FutureQ/Features/whenAllVoid.T.gyb -o ./Sources/FutureQ/Features/whenAllVoid.T.swift --line-directive ''
+ ./utils/gyb.py ./Sources/Async/Operators/whenAllVoid.T.gyb -o ./Sources/Async/Operators/whenAllVoid.T.swift --line-directive ''
  */
 
 import Foundation
