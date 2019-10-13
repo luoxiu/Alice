@@ -12,16 +12,14 @@ let package = Package(
         .watchOS(.v3)
     ],
     products: [
-        .library(name: "Alice", targets: ["Alice"]),
         .library(name: "Async", targets: ["Async"]),
         .executable(name: "ping", targets: ["ping"])
     ],
     dependencies: [
     ],
     targets: [
-        .target(name: "Alice", dependencies: []),
         .target(name: "Async", dependencies: []),
-        .target(name: "ping", dependencies: ["Alice", "Async"]),
-        .testTarget(name: "AliceTests", dependencies: ["Alice"]),
+        .target(name: "ping", dependencies: ["Async"]),
+        .testTarget(name: "AsyncTests", dependencies: ["Async"])
     ]
 )

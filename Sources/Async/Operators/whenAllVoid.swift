@@ -12,7 +12,7 @@ extension Thenable {
         
         for t in thenables {
             t.whenComplete { _ in
-                if count.sub(1) == 0 {
+                if count.sub(1) == 1 {
                     p.succeed(())
                 }
             }
@@ -36,7 +36,7 @@ extension Thenable {
             t.whenComplete { r in
                 switch r {
                 case .success:
-                    if count.sub(1) == 0 {
+                    if count.sub(1) == 1 {
                         p.succeed(())
                     }
                 case .failure(let e):
