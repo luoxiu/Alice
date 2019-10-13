@@ -333,7 +333,7 @@ class OperatorsTests: XCTestCase {
         DispatchQueue.global().async {
             p1.succeed(1)
         }
-
+        
         waitForExpectations(timeout: 0.5, handler: nil)
     }
     

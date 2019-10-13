@@ -55,6 +55,8 @@ request(imageURL)
 
 ## 更新
 
+- [Alice 3: 测试](https://v2ambition.com/posts/alice-3-test/)
+- [Alice 2: Future and promise](https://v2ambition.com/posts/alice-2-future-and-promise/)
 - [Alice 2: Future and promise](https://v2ambition.com/posts/alice-2-future-and-promise/)
 - [Alice 1: 初始化一个 Swift 框架](https://v2ambition.com/posts/alice-1-init-a-swift-package/)
 - [Alice 0: 下一代 HTTP 客户端](https://v2ambition.com/posts/alice-0-next-generation-of-http-client/)

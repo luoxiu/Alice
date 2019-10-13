@@ -1,3 +1,22 @@
-language: swift
-osx_image: xcode11
-script: swift test
+branches:
+  only:
+    - master
+
+matrix:
+  include:
+    - os: linux
+      language: generic
+      dist: xenial
+      env: SWIFT_VERSION="5.1"
+      sudo: required
+    - os: osx
+      language: swift
+      osx_image: xcode11.1
+
+before_install:
+  - if [[ $TRAVIS_OS_NAME == 'linux' ]]; then
+      eval "$(curl -sL https://raw.githubusercontent.com/kylef/swiftenv/master/docs/install.sh)";
+    fi
+
+script: 
+  - swift test

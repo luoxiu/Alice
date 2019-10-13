@@ -1,7 +1,7 @@
 import XCTest
 
-import AliceTests
+import AsyncTests
 
 var tests = [XCTestCaseEntry]()
-tests += AliceTests.allTests()
+tests += AsyncTests.allTests()
 XCTMain(tests)
