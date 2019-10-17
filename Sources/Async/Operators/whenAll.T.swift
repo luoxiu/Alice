@@ -4,6 +4,7 @@
  ./utils/gyb.py ./Sources/Async/Operators/whenAll.T.gyb -o ./Sources/Async/Operators/whenAll.T.swift --line-directive ''
  */
 import Foundation
+import Utility
 
 extension Thenable {
     
@@ -130,7 +131,7 @@ extension Thenable {
                 [thenable1.asVoid(), thenable2.asVoid()]
             )
             .map { _ in
-                (thenable1.inspectWithoutLock()!.value!, thenable2.inspectWithoutLock()!.value!)
+                (thenable1.inspectWithoutLock()!.success!, thenable2.inspectWithoutLock()!.success!)
             }
     }
 
@@ -147,7 +148,7 @@ extension Thenable {
                 [thenable1.asVoid(), thenable2.asVoid(), thenable3.asVoid()]
             )
             .map { _ in
-                (thenable1.inspectWithoutLock()!.value!, thenable2.inspectWithoutLock()!.value!, thenable3.inspectWithoutLock()!.value!)
+                (thenable1.inspectWithoutLock()!.success!, thenable2.inspectWithoutLock()!.success!, thenable3.inspectWithoutLock()!.success!)
             }
     }
 
@@ -165,7 +166,7 @@ extension Thenable {
                 [thenable1.asVoid(), thenable2.asVoid(), thenable3.asVoid(), thenable4.asVoid()]
             )
             .map { _ in
-                (thenable1.inspectWithoutLock()!.value!, thenable2.inspectWithoutLock()!.value!, thenable3.inspectWithoutLock()!.value!, thenable4.inspectWithoutLock()!.value!)
+                (thenable1.inspectWithoutLock()!.success!, thenable2.inspectWithoutLock()!.success!, thenable3.inspectWithoutLock()!.success!, thenable4.inspectWithoutLock()!.success!)
             }
     }
 
@@ -184,7 +185,7 @@ extension Thenable {
                 [thenable1.asVoid(), thenable2.asVoid(), thenable3.asVoid(), thenable4.asVoid(), thenable5.asVoid()]
             )
             .map { _ in
-                (thenable1.inspectWithoutLock()!.value!, thenable2.inspectWithoutLock()!.value!, thenable3.inspectWithoutLock()!.value!, thenable4.inspectWithoutLock()!.value!, thenable5.inspectWithoutLock()!.value!)
+                (thenable1.inspectWithoutLock()!.success!, thenable2.inspectWithoutLock()!.success!, thenable3.inspectWithoutLock()!.success!, thenable4.inspectWithoutLock()!.success!, thenable5.inspectWithoutLock()!.success!)
             }
     }
 
@@ -204,7 +205,7 @@ extension Thenable {
                 [thenable1.asVoid(), thenable2.asVoid(), thenable3.asVoid(), thenable4.asVoid(), thenable5.asVoid(), thenable6.asVoid()]
             )
             .map { _ in
-                (thenable1.inspectWithoutLock()!.value!, thenable2.inspectWithoutLock()!.value!, thenable3.inspectWithoutLock()!.value!, thenable4.inspectWithoutLock()!.value!, thenable5.inspectWithoutLock()!.value!, thenable6.inspectWithoutLock()!.value!)
+                (thenable1.inspectWithoutLock()!.success!, thenable2.inspectWithoutLock()!.success!, thenable3.inspectWithoutLock()!.success!, thenable4.inspectWithoutLock()!.success!, thenable5.inspectWithoutLock()!.success!, thenable6.inspectWithoutLock()!.success!)
             }
     }
 
@@ -225,7 +226,7 @@ extension Thenable {
                 [thenable1.asVoid(), thenable2.asVoid(), thenable3.asVoid(), thenable4.asVoid(), thenable5.asVoid(), thenable6.asVoid(), thenable7.asVoid()]
             )
             .map { _ in
-                (thenable1.inspectWithoutLock()!.value!, thenable2.inspectWithoutLock()!.value!, thenable3.inspectWithoutLock()!.value!, thenable4.inspectWithoutLock()!.value!, thenable5.inspectWithoutLock()!.value!, thenable6.inspectWithoutLock()!.value!, thenable7.inspectWithoutLock()!.value!)
+                (thenable1.inspectWithoutLock()!.success!, thenable2.inspectWithoutLock()!.success!, thenable3.inspectWithoutLock()!.success!, thenable4.inspectWithoutLock()!.success!, thenable5.inspectWithoutLock()!.success!, thenable6.inspectWithoutLock()!.success!, thenable7.inspectWithoutLock()!.success!)
             }
     }
 

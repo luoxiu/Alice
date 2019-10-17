@@ -1,4 +1,5 @@
 import Foundation
+import Utility
 
 public protocol Thenable {
     
@@ -34,12 +35,12 @@ extension Thenable {
     
     @inlinable
     public func inspectSuccess() -> Success? {
-        return self.inspect()?.value
+        return self.inspect()?.success
     }
     
     @inlinable
     public func inspectFailure() -> Failure? {
-        return self.inspect()?.error
+        return self.inspect()?.failure
     }
 }
 

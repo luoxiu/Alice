@@ -1,4 +1,5 @@
 import Foundation
+import Utility
 
 extension Thenable {
     
@@ -10,7 +11,7 @@ extension Thenable {
         }
         sema.wait()
         
-        return self.inspectWithoutLock()!.value
+        return self.inspectWithoutLock()!.success
     }
     
     @inlinable
@@ -21,6 +22,6 @@ extension Thenable {
         }
         sema.wait()
         
-        return self.inspectWithoutLock()!.error
+        return self.inspectWithoutLock()!.failure
     }
 }

@@ -35,10 +35,11 @@ def getResultList(i):
     return ", ".join(names)
 
 def getValueList(i):
-    names = map(lambda x: "thenable%d.inspectWithoutLock()!.value!" % x, range(1, i + 1))
+    names = map(lambda x: "thenable%d.inspectWithoutLock()!.success!" % x, range(1, i + 1))
     return ", ".join(names)
 }%
 import Foundation
+import Utility
 
 extension Thenable {
     

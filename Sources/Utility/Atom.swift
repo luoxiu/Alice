@@ -1,7 +1,6 @@
 import Foundation
 
-@usableFromInline
-final class Atom<T> {
+public final class Atom<T> {
     
     @usableFromInline
     let lock = Lock()
@@ -10,33 +9,33 @@ final class Atom<T> {
     var _value: T
     
     @inlinable
-    init(_ value: T) {
+    public init(_ value: T) {
         self._value = value
     }
     
     @inlinable
-    func get() -> T {
+    public func get() -> T {
         self.lock.lock()
         defer { self.lock.unlock() }
         return self._value
     }
     
     @inlinable
-    func set(_ new: T) {
+    public func set(_ new: T) {
         self.lock.lock()
         defer { self.lock.unlock() }
         self._value = new
     }
     
     @inlinable
-    func withLock<R>(_ body: (T) throws -> R) rethrows -> R {
+    public func withLock<R>(_ body: (T) throws -> R) rethrows -> R {
         self.lock.lock()
         defer { self.lock.unlock() }
         return try body(self._value)
     }
     
     @inlinable
-    func withLockMutating<R>(_ body: (inout T) throws -> R) rethrows -> R {
+    public func withLockMutating<R>(_ body: (inout T) throws -> R) rethrows -> R {
         self.lock.lock()
         defer { self.lock.unlock() }
         return try body(&self._value)
@@ -46,7 +45,7 @@ final class Atom<T> {
 extension Atom where T: Equatable {
     
     @inlinable
-    func compareAndSet(expected: T, new: T) -> Bool {
+    public func compareAndSet(expected: T, new: T) -> Bool {
         return self.withLockMutating {
             if $0 == expected {
                 $0 = new
@@ -60,7 +59,7 @@ extension Atom where T: Equatable {
 extension Atom where T: AdditiveArithmetic {
     
     @inlinable
-    func add(_ val: T) -> T {
+    public func add(_ val: T) -> T {
         return self.withLockMutating {
             let old = $0
             $0 += val
@@ -69,7 +68,7 @@ extension Atom where T: AdditiveArithmetic {
     }
     
     @inlinable
-    func sub(_ val: T) -> T {
+    public func sub(_ val: T) -> T {
         return self.withLockMutating {
             let old = $0
             $0 -= val
@@ -81,7 +80,7 @@ extension Atom where T: AdditiveArithmetic {
 extension Atom where T: RangeReplaceableCollection {
     
     @inlinable
-    func append(_ new: T.Element) -> T {
+    public func append(_ new: T.Element) -> T {
         return self.withLockMutating {
             $0.append(new)
             return $0

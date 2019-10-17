@@ -18,7 +18,8 @@ let package = Package(
     dependencies: [
     ],
     targets: [
-        .target(name: "Async", dependencies: []),
+        .target(name: "Utility"),
+        .target(name: "Async", dependencies: ["Utility"]),
         .target(name: "ping", dependencies: ["Async"]),
         .testTarget(name: "AsyncTests", dependencies: ["Async"])
     ]

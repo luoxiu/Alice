@@ -1,4 +1,5 @@
 import Foundation
+import Utility
 
 extension Thenable {
     
@@ -35,7 +36,7 @@ extension Thenable {
                 switch r {
                 case .success:
                     if count.sub(1) == 1 {
-                        p.succeed(thenables.map({ $0.inspectWithoutLock()!.value! }))
+                        p.succeed(thenables.map({ $0.inspectWithoutLock()!.success! }))
                     }
                 case .failure(let e):
                     p.fail(e)

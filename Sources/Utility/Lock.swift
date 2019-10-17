@@ -22,14 +22,13 @@ final class SpinLock: NSLocking {
 }
 #endif
 
-@usableFromInline
-final class Lock: NSLocking {
+public final class Lock: NSLocking {
     
     @usableFromInline
     let wrapped: NSLocking
     
     @inlinable
-    init() {
+    public init() {
         #if canImport(Darwin)
         self.wrapped = SpinLock()
         #else
@@ -38,12 +37,12 @@ final class Lock: NSLocking {
     }
     
     @inlinable
-    func lock() {
+    public func lock() {
         self.wrapped.lock()
     }
     
     @inlinable
-    func unlock() {
+    public func unlock() {
         self.wrapped.unlock()
     }
 }
