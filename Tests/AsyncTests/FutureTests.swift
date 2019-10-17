@@ -31,11 +31,11 @@ class FutureTests: XCTestCase {
         XCTAssertNotNil(f.inspect())
         XCTAssertNotNil(f.inspectWithoutLock())
         
-        XCTAssertEqual(f.inspect()?.value, true)
+        XCTAssertEqual(f.inspect()?.success, true)
         
         let failedFuture = Future<Bool, TestError>.failure(TestError.e1)
         XCTAssertNotNil(failedFuture.inspect())
-        XCTAssertTrue(failedFuture.inspect()!.error == TestError.e1)
+        XCTAssertTrue(failedFuture.inspect()!.failure == TestError.e1)
     }
     
     func testComplete() {
