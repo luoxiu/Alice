@@ -12,6 +12,7 @@ let package = Package(
         .watchOS(.v3)
     ],
     products: [
+        .library(name: "HTTP", targets: ["HTTP", "Async"]),
         .library(name: "Async", targets: ["Async"]),
         .executable(name: "ping", targets: ["ping"])
     ],
@@ -20,7 +21,9 @@ let package = Package(
     targets: [
         .target(name: "Utility"),
         .target(name: "Async", dependencies: ["Utility"]),
-        .target(name: "ping", dependencies: ["Async"]),
-        .testTarget(name: "AsyncTests", dependencies: ["Async"])
+        .target(name: "HTTP", dependencies: ["Async", "Utility"]),
+        .target(name: "ping", dependencies: ["HTTP"]),
+        .testTarget(name: "AsyncTests", dependencies: ["Async"]),
+        .testTarget(name: "HTTPTests", dependencies: ["HTTP"])
     ]
 )
