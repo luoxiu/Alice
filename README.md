@@ -19,7 +19,41 @@ These libraries will be split into their own repositories in the official releas
 
 ## Usage
 
-### Async(ing)
+### HTTP(ing)
+
+```swift
+let client = HTTPClient()
+client.use { (req, next) in
+    return try next.respond(to: req)
+        .catch { e in
+            LOG.error("[HTTP]: \(req.method) \(req.url) \(e)")
+        }
+}
+
+client.use { (req, next) in
+    let tag = Date()
+    return try next.respond(to: req).map {
+        $0.headers.set("\(Date().timeIntervalSince(tag))", for: "Time-Spent")
+    }
+}
+
+client.use(AuthMiddleware())
+
+let task = client.get("https://api.alice.com/user")
+
+// task.text // -> Future<String, HTTPError>
+// task.json // -> Future<JSON, HTTPError>
+
+task.response
+    .map { 
+        User.init
+    }
+    .then {
+        updateUI()
+    }
+```
+
+### Async
 
 ```swift
 func request(_ url: URL) -> Future<HTTPResponse, HTTPError> {
@@ -55,6 +89,8 @@ request(imageURL)
 
 ## 更新
 
+- [Alice 5: 给 Future 加点糖](https://v2ambition.com/posts/alice-5-add-some-sugar-to-future/)
+- [Alice 4: Future 的操作符](https://v2ambition.com/posts/alice-4-future-operators/)
 - [Alice 3: 测试](https://v2ambition.com/posts/alice-3-test/)
 - [Alice 2: Future and promise](https://v2ambition.com/posts/alice-2-future-and-promise/)
 - [Alice 2: Future and promise](https://v2ambition.com/posts/alice-2-future-and-promise/)
