@@ -24,14 +24,10 @@ public struct Bag<Element> {
         let entry = (key: token, val: element)
         
         switch token.val {
-        case 0:
-            self._entry0 = entry
-        case 1:
-            self._entry1 = entry
-        case 2:
-            self._entryList = [entry]
-        default:
-            self._entryList!.append(entry)
+        case 0:     self._entry0 = entry
+        case 1:     self._entry1 = entry
+        case 2:     self._entryList = [entry]
+        default:    self._entryList!.append(entry)
         }
         
         return token
@@ -39,31 +35,20 @@ public struct Bag<Element> {
     
     public func value(for token: BagToken) -> Element? {
         switch token.val {
-        case 0:
-            return self._entry0?.val
-        case 1:
-            return self._entry1?.val
-        default:
-            return _entryList?.first(where: { $0.key == token })?.val
+        case 0:     return self._entry0?.val
+        case 1:     return self._entry1?.val
+        default:    return self._entryList?.first(where: { $0.key == token })?.val
         }
     }
     
     @discardableResult
     public mutating func removeValue(for token: BagToken) -> Element? {
         switch token.val {
-        case 0:
-            if let val = self._entry0?.val {
-                self._entry0 = nil
-                return val
-            }
-        case 1:
-            if let val = self._entry1?.val {
-                self._entry1 = nil
-                return val
-            }
+        case 0:     return self._entry0.clear()?.val
+        case 1:     return self._entry1.clear()?.val
         default:
-            if let idx = _entryList?.firstIndex(where: { $0.key == token }) {
-                return _entryList?.remove(at: idx).val
+            if let idx = self._entryList?.firstIndex(where: { $0.key == token }) {
+                return self._entryList?.remove(at: idx).val
             }
         }
         
@@ -77,9 +62,9 @@ public struct Bag<Element> {
     }
     
     public var count: Int {
-        let x = (_entry0 == nil ? 0 : 1)
-        let y = (_entry1 == nil ? 0 : 1)
-        let z = (_entryList?.count ?? 0)
+        let x = (self._entry0 == nil ? 0 : 1)
+        let y = (self._entry1 == nil ? 0 : 1)
+        let z = (self._entryList?.count ?? 0)
         
         return x + y + z
     }

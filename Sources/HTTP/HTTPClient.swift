@@ -5,21 +5,16 @@ open class HTTPClient {
     
     // MARK: - Properties
     
-    // MARK: util
     let workQueue: DispatchQueue
     private let syncQueue: DispatchQueue
     
-    // MARK: session
     public let session: URLSession
     private let sessionDelegate: HTTPSessionDelegate
     
-    // MARK: task
-    private var _registry: [URLSessionTask: HTTPTask]
+    private var _taskMap: [URLSessionTask: HTTPTask]
     
-    // MARK: middleware
     private var _middlewares: Bag<HTTPMiddleware>
     
-    // MARK: event
     private var _sessionDidReceiveChallengeCallback: SessionDidReceiveChallengeCallback?
     private var _taskWillPerformHTTPRedirectionCallback: TaskWillPerformHTTPRedirectionCallback?
     private var _taskDidReceiveChallengeCallback: TaskDidReceiveChallengeCallback?
@@ -28,17 +23,9 @@ open class HTTPClient {
     
     private weak var _delegate: HTTPClientDelegate?
     
-    public weak var delegate: HTTPClientDelegate? {
-        get {
-            return self.syncQueue.sync {
-                self._delegate
-            }
-        }
-        set {
-            self.syncQueue.async {
-                self._delegate = newValue
-            }
-        }
+    public var delegate: HTTPClientDelegate? {
+        get { return self.syncQueue.sync { self._delegate } }
+        set { self.syncQueue.async { self._delegate = newValue } }
     }
     
     // MARK: - Init
@@ -46,7 +33,7 @@ open class HTTPClient {
         self.workQueue = DispatchQueue(label: UUID().uuidString, qos: .userInitiated)
         self.syncQueue = DispatchQueue(label: UUID().uuidString, qos: .userInitiated)
         
-        self._registry = [:]
+        self._taskMap = [:]
         self._middlewares = Bag()
         
         self.sessionDelegate = HTTPSessionDelegate()
@@ -69,7 +56,7 @@ open class HTTPClient {
     }
     
     deinit {
-        session.invalidateAndCancel()
+        self.session.invalidateAndCancel()
     }
     
     // MARK: - Methods
@@ -101,19 +88,19 @@ open class HTTPClient {
     
     func register(_ httpTask: HTTPTask, for sessionTask: URLSessionTask) {
         self.syncQueue.async {
-            self._registry[sessionTask] = httpTask
+            self._taskMap[sessionTask] = httpTask
         }
     }
     
     func unregister(_ httpTask: HTTPTask, for sessionTask: URLSessionTask) {
         self.syncQueue.async {
-            self._registry[sessionTask] = nil
+            self._taskMap[sessionTask] = nil
         }
     }
     
     func withHTTPTask(of sessionTask: URLSessionTask, _ body: @escaping (HTTPTask) -> Void) {
         self.syncQueue.async {
-            if let t = self._registry[sessionTask] {
+            if let t = self._taskMap[sessionTask] {
                 body(t)
             }
         }
@@ -141,6 +128,14 @@ open class HTTPClient {
     open func use(_ mw: HTTPMiddleware) -> Self {
         self.syncQueue.async {
             self._middlewares.append(mw)
+        }
+        return self
+    }
+    
+    @discardableResult
+    open func use(_ mw: @escaping (HTTPRequest, HTTPResponder) -> Future<HTTPResponse, Error>) -> Self {
+        self.syncQueue.async {
+            self._middlewares.append(HTTPAnyMiddleware(mw))
         }
         return self
     }
@@ -184,7 +179,7 @@ open class HTTPClient {
         return HTTPTask(self, request, .data)
     }
     
-    open func download(_ request: HTTPRequest) -> HTTPTask {
+    open func download(_ request: HTTPRequest, to destination: URL) -> HTTPTask {
         return HTTPTask(self, request, .download)
     }
     
@@ -280,10 +275,10 @@ open class HTTPClient {
     
     func urlSession(_ session: URLSession, didBecomeInvalidWithError error: Error?) {
         self.syncQueue.async {
-            for (sessionTask, httpTask) in self._registry {
+            for (sessionTask, httpTask) in self._taskMap {
                 httpTask.urlSession(session, task: sessionTask, didCompleteWithError: error)
             }
-            self._registry.removeAll()
+            self._taskMap.removeAll()
         }
     }
     

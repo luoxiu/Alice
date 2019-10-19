@@ -44,3 +44,11 @@ extension Result {
         return nil
     }
 }
+
+extension Optional {
+    
+    mutating func clear() -> Wrapped? {
+        defer { self = nil }
+        return self
+    }
+}
