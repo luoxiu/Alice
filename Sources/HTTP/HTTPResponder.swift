@@ -1,10 +1,6 @@
 import Foundation
 import Async
 
-#if canImport(FoundationNetworking)
-import FoundationNetworking
-#endif
-
 public protocol HTTPResponder {
     
     func respond(to request: HTTPRequest) throws -> Future<HTTPResponse, Error>

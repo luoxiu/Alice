@@ -1,9 +1,5 @@
 import Foundation
 
-#if canImport(FoundationNetworking)
-import FoundationNetworking
-#endif
-
 class HTTPSessionDelegate: NSObject {
     
     weak var client: HTTPClient!

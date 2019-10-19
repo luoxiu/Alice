@@ -4,11 +4,15 @@ branches:
 
 matrix:
   include:
-    - os: linux
-      language: generic
-      dist: xenial
-      env: SWIFT_VERSION="5.1"
-      sudo: required
+    # Comment out linux temporarily
+    # "Networking" module has not been completed yet in swift-corelibs-foundation. :(
+    # https://github.com/apple/swift-corelibs-foundation/blob/master/Docs/Status.md
+    #
+    # - os: linux
+    #   language: generic
+    #   dist: xenial
+    #   env: SWIFT_VERSION="5.1"
+    #   sudo: required
     - os: osx
       language: swift
       osx_image: xcode11.1

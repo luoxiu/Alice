@@ -1,9 +1,5 @@
 import Foundation
 
-#if canImport(FoundationNetworking)
-import FoundationNetworking
-#endif
-
 public struct HTTPRequest {
     
     public var head: HTTPRequestHead
