@@ -2,6 +2,10 @@ import Foundation
 import Async
 import Utility
 
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
+
 extension HTTPTask {
 
     public enum Kind {

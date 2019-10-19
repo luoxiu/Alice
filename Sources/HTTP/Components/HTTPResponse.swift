@@ -1,5 +1,9 @@
 import Foundation
 
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
+
 public struct HTTPResponse {
     
     public var head: HTTPResponseHead

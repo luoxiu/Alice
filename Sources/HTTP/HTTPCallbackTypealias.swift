@@ -1,5 +1,9 @@
 import Foundation
 
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
+
 public typealias SessionDidReceiveChallengeCallback = (
     _ session: URLSession,
     _ challenge: URLAuthenticationChallenge,

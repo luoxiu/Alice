@@ -1,6 +1,10 @@
 import Foundation
 import Utility
 
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
+
 open class HTTPClient {
     
     // MARK: - Properties
