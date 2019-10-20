@@ -149,7 +149,7 @@ open class HTTPClient {
     }
     
     @discardableResult
-    open func use(_ mw: HTTPMiddleware, when match: HTTPRequestMatch) -> Self {
+    open func use(_ mw: HTTPMiddleware, when match: HTTPRequestMatcher) -> Self {
         let new = HTTPAnyMiddleware { (request, responder) in
             if match.matches(request) {
                 return try mw.respond(to: request, chainingTo: responder)
