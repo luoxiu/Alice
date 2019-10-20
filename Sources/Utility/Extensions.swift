@@ -47,8 +47,25 @@ extension Result {
 
 extension Optional {
     
-    mutating func clear() -> Wrapped? {
+    public  mutating func clear() -> Wrapped? {
         defer { self = nil }
         return self
+    }
+    
+    public mutating func setWhenNone(_ new: Wrapped) {
+        if self == nil {
+            self = new
+        }
+    }
+}
+
+extension String {
+    
+    public var characterSet: CharacterSet {
+        return CharacterSet(charactersIn: self)
+    }
+    
+    public var ns: NSString {
+        return self as NSString
     }
 }

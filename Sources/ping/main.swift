@@ -1,6 +1,13 @@
 import Foundation
 import HTTP
 
-var headers = HTTPHeaders()
-headers.set("123", for: "123")
-headers.set("bearer hfjkahdfjk", for: .authorization)
+var url = HTTPURL("https://baidu.com")
+
+let task = URLSession.shared.dataTask(with: url.toValidURL().success!) { (data, response, error) in
+    
+    print(error)
+}
+
+task.resume()
+
+RunLoop.current.run()

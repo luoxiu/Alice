@@ -200,7 +200,7 @@ extension HTTPRequest {
 extension HTTPRequest {
     
     public func toURLRequest() throws -> URLRequest {
-        let url = try self.url.toURL()
+        let url = try self.url.toValidURL().get()
         
         var req = URLRequest(url: url)
         req.httpMethod = method.rawValue

@@ -1,5 +1,6 @@
 import Foundation
 
+/// Simply forward delegate message to client.
 class HTTPSessionDelegate: NSObject {
     
     private var unmanagedClient: Unmanaged<HTTPClient>?
@@ -7,11 +8,11 @@ class HTTPSessionDelegate: NSObject {
     var client: HTTPClient? {
         get { return self.unmanagedClient?.takeUnretainedValue() }
         set {
-            guard let client = newValue else {
-                self.unmanagedClient = nil
+            if let client = newValue {
+                self.unmanagedClient = .passUnretained(client)
                 return
             }
-            self.unmanagedClient = .passUnretained(client)
+            self.unmanagedClient = nil
         }
     }
 }
