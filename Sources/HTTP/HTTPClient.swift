@@ -9,10 +9,8 @@ open class HTTPClient {
     private let syncQueue: DispatchQueue
     
     public let session: URLSession
-    private let sessionDelegate: HTTPSessionDelegate
     
-    private var _taskMap: [URLSessionTask: HTTPTask]
-    
+    private var _taskRegistry: [URLSessionTask: HTTPTask]
     private var _middlewares: Bag<HTTPMiddleware>
     
     private var _sessionDidReceiveChallengeCallback: SessionDidReceiveChallengeCallback?
@@ -30,13 +28,13 @@ open class HTTPClient {
     
     // MARK: - Init
     public init(configuration: URLSessionConfiguration) {
-        self.workQueue = DispatchQueue(label: UUID().uuidString, qos: .userInitiated)
-        self.syncQueue = DispatchQueue(label: UUID().uuidString, qos: .userInitiated)
+        self.workQueue = DispatchQueue(label: UUID().uuidString)
+        self.syncQueue = DispatchQueue(label: UUID().uuidString)
         
-        self._taskMap = [:]
+        self._taskRegistry = [:]
         self._middlewares = Bag()
         
-        self.sessionDelegate = HTTPSessionDelegate()
+        let sessionDelegate = HTTPSessionDelegate()
         
         self.session = URLSession(
             configuration: configuration,
@@ -44,7 +42,7 @@ open class HTTPClient {
             delegateQueue: nil
         )
         
-        self.sessionDelegate.client = self
+        sessionDelegate.client = self
     }
     
     public convenience init() {
@@ -88,19 +86,19 @@ open class HTTPClient {
     
     func register(_ httpTask: HTTPTask, for sessionTask: URLSessionTask) {
         self.syncQueue.async {
-            self._taskMap[sessionTask] = httpTask
+            self._taskRegistry[sessionTask] = httpTask
         }
     }
     
     func unregister(_ httpTask: HTTPTask, for sessionTask: URLSessionTask) {
         self.syncQueue.async {
-            self._taskMap[sessionTask] = nil
+            self._taskRegistry[sessionTask] = nil
         }
     }
     
     func withHTTPTask(of sessionTask: URLSessionTask, _ body: @escaping (HTTPTask) -> Void) {
         self.syncQueue.async {
-            if let t = self._taskMap[sessionTask] {
+            if let t = self._taskRegistry[sessionTask] {
                 body(t)
             }
         }
@@ -172,18 +170,10 @@ open class HTTPClient {
         }
     }
     
-    // MARK: send
+    // MARK: - Send
     
     open func send(_ request: HTTPRequest) -> HTTPTask {
         return HTTPTask(self, request, .data)
-    }
-    
-    open func download(_ request: HTTPRequest, to destination: URL) -> HTTPTask {
-        return HTTPTask(self, request, .download)
-    }
-    
-    open func upload(_ request: HTTPRequest) -> HTTPTask {
-        return HTTPTask(self, request, .upload)
     }
 
     // MARK: - Shared
@@ -274,10 +264,10 @@ open class HTTPClient {
     
     func urlSession(_ session: URLSession, didBecomeInvalidWithError error: Error?) {
         self.syncQueue.async {
-            for (sessionTask, httpTask) in self._taskMap {
+            for (sessionTask, httpTask) in self._taskRegistry {
                 httpTask.urlSession(session, task: sessionTask, didCompleteWithError: error)
             }
-            self._taskMap.removeAll()
+            self._taskRegistry.removeAll()
         }
     }
     

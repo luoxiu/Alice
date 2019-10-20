@@ -272,7 +272,7 @@ open class HTTPTask {
         }
         
         guard let response = task.response as? HTTPURLResponse, let metrics = self._metrics else {
-            self.sessionResponder.fail(.teacup("The response from the server should always be an http response."))
+            self.sessionResponder.fail(.response(.badResponse("The response from the server should always be an http response.")))
             return
         }
         

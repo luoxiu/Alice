@@ -37,7 +37,7 @@ client.use { (req, next) in
     }
 }
 
-client.use(AuthMiddleware())
+client.use(AuthMiddleware(), when: .path("/users"))
 
 let task = client.get("https://api.alice.com/user")
 

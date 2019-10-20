@@ -111,52 +111,46 @@ extension HTTPResponse {
     
     // MARK: - Chainable
     
-    public func with(_ body: (inout HTTPResponse) -> Void) -> HTTPResponse {
+    public func mURL(_ url: HTTPURL) -> HTTPResponse {
         var response = self
-        body(&response)
+        response.url = url
         return response
     }
     
-    public func withURL(_ url: HTTPURL) -> HTTPResponse {
-        return self.with {
-            $0.url = url
-        }
+    public func mStatus(_ status: HTTPResponseStatus) -> HTTPResponse {
+        var response = self
+        response.status = status
+        return response
     }
     
-    public func withStatus(_ status: HTTPResponseStatus) -> HTTPResponse {
-        return self.with {
-            $0.status = status
-        }
+    public func mHeaders(_ headers: HTTPHeaders) -> HTTPResponse {
+        var response = self
+        response.headers = headers
+        return response
     }
     
-    public func withHeaders(_ headers: HTTPHeaders) -> HTTPResponse {
-        return self.with {
-            $0.headers = headers
-        }
+    public func mExpectedContentLenght(_ expectedContentLenght: Int64) -> HTTPResponse {
+        var response = self
+        response.expectedContentLenght = expectedContentLenght
+        return response
     }
     
-    public func withExpectedContentLenght(_ expectedContentLenght: Int64) -> HTTPResponse {
-        return self.with {
-            $0.expectedContentLenght = expectedContentLenght
-        }
+    public func mSuggestedFilename(_ suggestedFilename: String) -> HTTPResponse {
+        var response = self
+        response.suggestedFilename = suggestedFilename
+        return response
     }
     
-    public func withSuggestedFilename(_ suggestedFilename: String) -> HTTPResponse {
-        return self.with {
-            $0.suggestedFilename = suggestedFilename
-        }
+    public func mMIMEType(_ mimeType: HTTPMIMEType) -> HTTPResponse {
+        var response = self
+        response.mimeType = mimeType
+        return response
     }
     
-    public func withMIMEType(_ mimeType: HTTPMIMEType) -> HTTPResponse {
-        return self.with {
-            $0.mimeType = mimeType
-        }
-    }
-    
-    public func withTextEncoding(_ textEncoding: String.Encoding) -> HTTPResponse {
-        return self.with {
-            $0.textEncoding = textEncoding
-        }
+    public func mTextEncoding(_ textEncoding: String.Encoding) -> HTTPResponse {
+        var response = self
+        response.textEncoding = textEncoding
+        return response
     }
 }
 

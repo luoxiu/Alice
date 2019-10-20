@@ -47,21 +47,6 @@ public struct HTTPRequest {
         }
     }
     
-    // MARK: Body
-    
-//    public var jsonBody: Any? {
-//        get {
-//            switch self.body {
-//            case .data(let data):
-//                return try? JSONSerialization.jsonObject(with: data, options: [])
-//            case .file(let file):
-//
-//                return try? JSONSerialization.jsonObject(with: InputStream(url: <#T##URL#>), options: <#T##JSONSerialization.ReadingOptions#>)
-//            }
-//        }
-//    }
-    
-    
     // MARK: Configuration
     
     public var cachePolicy: HTTPRequest.CachePolicy {
@@ -128,71 +113,64 @@ public struct HTTPRequest {
 extension HTTPRequest {
     
     // MARK: - Chainable
-    
-    public func with(_ body: (inout HTTPRequest) -> Void) -> HTTPRequest {
+    public func mMethod(_ method: HTTPMethod) -> HTTPRequest {
         var request = self
-        body(&request)
+        request.method = method
         return request
     }
     
-    public func withMethod(_ method: HTTPMethod) -> HTTPRequest {
-        return self.with {
-            $0.method = method
-        }
+    public func mURL(_ URL: HTTPURL) -> HTTPRequest {
+        var request = self
+        request.url = URL
+        return request
     }
     
-    public func withURL(_ url: HTTPURL) -> HTTPRequest {
-        return self.with {
-            $0.url = url
-        }
+    public func mHeaders(_ headers: HTTPHeaders) -> HTTPRequest {
+        var request = self
+        request.headers = headers
+        return request
     }
     
-    public func withHeaders(_ headers: HTTPHeaders) -> HTTPRequest {
-        return self.with {
-            $0.headers = headers
-        }
+    public func mBody(_ body: HTTPRequestBody) -> HTTPRequest {
+        var request = self
+        request.body = body
+        return request
     }
     
-    public func withBody(_ body: HTTPRequestBody) -> HTTPRequest {
-        return self.with {
-            $0.body = body
-        }
+    public func mCachePolicy(_ cachePolicy: HTTPRequest.CachePolicy) -> HTTPRequest {
+        var request = self
+        request.cachePolicy = cachePolicy
+        return request
     }
     
-    public func withCachePolicy(_ cachePolicy: HTTPRequest.CachePolicy) -> HTTPRequest {
-        return self.with {
-            $0.cachePolicy = cachePolicy
-        }
+    public func mTimeoutInterval(_ timeoutInterval: TimeInterval) -> HTTPRequest {
+        var request = self
+        request.timeoutInterval = timeoutInterval
+        return request
     }
     
-    public func withTimeoutInterval(_ timeoutInterval: TimeInterval) -> HTTPRequest {
-        return self.with {
-            $0.timeoutInterval = timeoutInterval
-        }
+    public func mAllowsCellularAccess(_ allowsCellularAccess: Bool) -> HTTPRequest {
+        var request = self
+        request.allowsCellularAccess = allowsCellularAccess
+        return request
     }
     
-    public func withAllowsCellularAccess(_ allowsCellularAccess: Bool) -> HTTPRequest {
-        return self.with {
-            $0.allowsCellularAccess = allowsCellularAccess
-        }
+    public func mHttpShouldHandleCookies(_ httpShouldHandleCookies: Bool) -> HTTPRequest {
+        var request = self
+        request.httpShouldHandleCookies = httpShouldHandleCookies
+        return request
     }
     
-    public func withHttpShouldHandleCookies(_ httpShouldHandleCookies: Bool) -> HTTPRequest {
-        return self.with {
-            $0.httpShouldHandleCookies = httpShouldHandleCookies
-        }
+    public func mHttpShouldUsePipelining(_ httpShouldUsePipelining: Bool) -> HTTPRequest {
+        var request = self
+        request.httpShouldUsePipelining = httpShouldUsePipelining
+        return request
     }
     
-    public func withHttpShouldUsePipelining(_ httpShouldUsePipelining: Bool) -> HTTPRequest {
-        return self.with {
-            $0.httpShouldUsePipelining = httpShouldUsePipelining
-        }
-    }
-    
-    public func withNetworkServiceType(_ networkServiceType: HTTPRequest.NetworkServiceType) -> HTTPRequest {
-        return self.with {
-            $0.networkServiceType = networkServiceType
-        }
+    public func mNetworkServiceType(_ networkServiceType: HTTPRequest.NetworkServiceType) -> HTTPRequest {
+        var request = self
+        request.networkServiceType = networkServiceType
+        return request
     }
 }
 

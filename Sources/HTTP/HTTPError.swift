@@ -2,6 +2,7 @@ import Foundation
 
 public enum HTTPError: Error {
     
+    // URL Error
     public enum URLErrorReason {
         case invalidScheme(String?)
         case invalidHost(String?)
@@ -9,24 +10,51 @@ public enum HTTPError: Error {
         
         case malformedComponents(URLComponents)
     }
-    
     case URL(URLErrorReason)
     
+    // Request Error
     public enum RequestErrorReason {
         case missingURL
         case invalidResumeData(Data)
         
         case missingUploadBody
     }
-    
     case request(RequestErrorReason)
     
     
-    case jsonSerialization(Data, Error)
+    // Response Error
+    public enum ResponseErrorReason {
+        
+        case badResponse(String?)
+    }
+    case response(ResponseErrorReason)
     
+    // Client Error
     case session(Error)
     
-    case teacup(String)
+    case jsonSerialization(Data, Error)
+    
+    case custom(Error)
+}
+
+extension HTTPError {
+    
+    public var custom: Error? {
+        guard case .custom(let e) = self else {
+            return nil
+        }
+        return e
+    }
+}
+
+extension Error {
+    
+    public func asHTTPError() -> HTTPError {
+        if let e = self as? HTTPError {
+            return e
+        }
+        return .custom(self)
+    }
 }
 
 extension HTTPError: CustomStringConvertible {
