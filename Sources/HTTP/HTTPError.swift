@@ -7,7 +7,6 @@ public enum HTTPError: Error {
         case invalidScheme(String?)
         case invalidHost(String?)
         case invalidPort(Int?)
-        
         case malformedComponents(URLComponents)
     }
     case URL(URLErrorReason)
@@ -16,15 +15,13 @@ public enum HTTPError: Error {
     public enum RequestErrorReason {
         case missingURL
         case invalidResumeData(Data)
-        
         case missingUploadBody
     }
     case request(RequestErrorReason)
     
-    
     // Response Error
     public enum ResponseErrorReason {
-        
+        case canNotMoveDownloaded
         case badResponse(String?)
     }
     case response(ResponseErrorReason)

@@ -123,14 +123,25 @@ open class HTTPClient: HTTPSessionDelegating {
     
     open var middlewares: [HTTPMiddleware] {
         return self.syncQueue.sync {
-            Array(self.middlewares)
+            Array(self._middlewares)
         }
     }
     
     // MARK: - Send
-    
-    open func send(_ request: HTTPRequest) -> HTTPTask {
+    open func request(_ request: HTTPRequest) -> HTTPTask {
         return HTTPTask(self, request, .data)
+    }
+    
+    open func download(_ request: HTTPRequest, to location: URL?) -> HTTPTask {
+        return HTTPTask(self, request, location)
+    }
+    
+    open func get(_ url: HTTPURL) -> HTTPTask {
+        return HTTPTask(self, HTTPRequest(method: .get, url: url), .data, true)
+    }
+    
+    open func get(_ url: String) -> HTTPTask {
+        return HTTPTask(self, HTTPRequest(method: .get, url: HTTPURL(url)), .data, true)
     }
 
     // MARK: - Shared

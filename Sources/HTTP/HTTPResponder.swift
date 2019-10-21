@@ -21,7 +21,7 @@ public struct HTTPAnyResponder: HTTPResponder {
 
 final class HTTPSessionResponder: HTTPResponder {
     
-    weak var httpTask: HTTPTask!
+    unowned var httpTask: HTTPTask!
     
     private let responsePromise: Promise<HTTPResponse, Error>
     
@@ -34,7 +34,7 @@ final class HTTPSessionResponder: HTTPResponder {
         self.httpTask.client.register(self.httpTask, for: task)
         task.resume()
         
-        return responsePromise.future
+        return self.responsePromise.future
     }
     
     func succeed(_ response: HTTPResponse) {

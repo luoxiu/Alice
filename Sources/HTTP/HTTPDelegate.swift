@@ -180,19 +180,10 @@ public class HTTPSessionDelegate: HTTPTaskDelegate {
 
 public protocol HTTPTaskDelegating {
     var taskDelegate: HTTPTaskDelegate { get }
-    var nextTaskDelegating: HTTPTaskDelegating? { get }
 }
 
 public protocol HTTPSessionDelegating: HTTPTaskDelegating {
-    
     var sessionDelegate: HTTPSessionDelegate { get }
-}
-
-extension HTTPTaskDelegating {
-    
-    public var nextTaskDelegating: HTTPTaskDelegating? {
-        return nil
-    }
 }
 
 extension HTTPSessionDelegating {

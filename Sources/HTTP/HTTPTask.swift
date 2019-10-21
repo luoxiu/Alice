@@ -11,6 +11,9 @@ extension HTTPTask {
     }
 }
 
+// TODO: Redesgin init part
+// TODO: Redesign delegate part
+
 open class HTTPTask: HTTPTaskDelegating {
     
     // MARK: - Properties
@@ -28,13 +31,13 @@ open class HTTPTask: HTTPTaskDelegating {
     
     private var _middlewares: Bag<HTTPMiddleware>
     
-    public typealias ProgressCallback = (HTTPProgress) -> Void
     
     private var _uploadProgress = HTTPProgress(totalUnitCount: 0, completedUnitCount: 0)
     private var _downloadProgress = HTTPProgress(totalUnitCount: 0, completedUnitCount: 0)
     
-    private var _uploadProgressCallback: ProgressCallback?
-    private var _downloadProgressCallback: ProgressCallback?
+    public typealias ProgressCallback = (HTTPProgress) -> Void
+    private var uploadProgressCallback: ProgressCallback?
+    private var downloadProgressCallback: ProgressCallback?
     
     // MARK: session
     public let client: HTTPClient
@@ -55,9 +58,10 @@ open class HTTPTask: HTTPTaskDelegating {
     
     // MARK: download task
     private var _url: URL?
+    private var _downloadLocation: URL?
     
     // MARK: - Init
-    init(_ client: HTTPClient, _ request: HTTPRequest, _ kind: Kind) {
+    init(_ client: HTTPClient, _ request: HTTPRequest, _ kind: Kind, _ startImmediately: Bool = false) {
         self._middlewares = Bag()
         self._isStarted = false
         self._kind = kind
@@ -68,11 +72,20 @@ open class HTTPTask: HTTPTaskDelegating {
         self.responsePromise = Promise()
         self.response = self.responsePromise.future
 
-        self.workQueue = DispatchQueue(label: UUID().uuidString, qos: .userInitiated)
-        self.syncQueue = DispatchQueue(label: UUID().uuidString, qos: .userInitiated)
+        self.workQueue = DispatchQueue(label: UUID().uuidString)
+        self.syncQueue = DispatchQueue(label: UUID().uuidString)
         
         self.sessionResponder = HTTPSessionResponder()
         self.sessionResponder.httpTask = self
+        
+        if startImmediately {
+            self.start()
+        }
+    }
+    
+    convenience init(_ client: HTTPClient, _ request: HTTPRequest, _ downloadLocation: URL?) {
+        self.init(client, request, .download)
+        self._downloadLocation = downloadLocation
     }
     
     // MARK: - Methods
@@ -131,16 +144,12 @@ open class HTTPTask: HTTPTaskDelegating {
     }
     
     open func onUploadProgress(_ callback: @escaping ProgressCallback) -> Self {
-        self.syncQueue.async {
-            self._uploadProgressCallback = callback
-        }
+        self.uploadProgressCallback = callback
         return self
     }
     
     open func onDownloadProgress(_ callback: @escaping ProgressCallback) -> Self  {
-        self.syncQueue.async {
-            self._downloadProgressCallback = callback
-        }
+        self.downloadProgressCallback = callback
         return self
     }
 
@@ -218,6 +227,10 @@ open class HTTPTask: HTTPTaskDelegating {
     // MARK: task
     
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        defer {
+            self.client.unregister(self, for: task)
+        }
+        
         if let error = error {
             self.sessionResponder.fail(.session(error))
             return
@@ -240,44 +253,35 @@ open class HTTPTask: HTTPTaskDelegating {
             }
         }
         
-        let res = HTTPResponse(response, body, metrics)
-
-        self.sessionResponder.succeed(res)
-        
-        self.client.unregister(self, for: task)
+        self.sessionResponder.succeed(HTTPResponse(response, body, metrics))
     }
     
     func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) {
         
-        self.syncQueue.async {
-            let callback = self.taskDelegate.taskWillPerformHTTPRedirectionCallback ?? self.nextTaskDelegating?.taskDelegate.taskWillPerformHTTPRedirectionCallback
-            self.workQueue.async {
-                callback?(session, task, response, request, completionHandler)
-            }
+        let callback = self.taskDelegate.taskWillPerformHTTPRedirectionCallback ?? self.nextTaskDelegating?.taskDelegate.taskWillPerformHTTPRedirectionCallback
+        self.workQueue.async {
+            callback?(session, task, response, request, completionHandler)
         }
     }
     
     func urlSession(_ session: URLSession, task: URLSessionTask, didReceive challenge: URLAuthenticationChallenge, completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
         
-        self.syncQueue.async {
-            let callback = self.taskDelegate.taskDidReceiveChallengeCallback ?? self.nextTaskDelegating?.taskDelegate.taskDidReceiveChallengeCallback
-            self.workQueue.async {
-                callback?(session, task, challenge, completionHandler)
-            }
+        let callback = self.taskDelegate.taskDidReceiveChallengeCallback ?? self.nextTaskDelegating?.taskDelegate.taskDidReceiveChallengeCallback
+        self.workQueue.async {
+            callback?(session, task, challenge, completionHandler)
         }
     }
     
     func urlSession(_ session: URLSession, task: URLSessionTask, needNewBodyStream completionHandler: @escaping (InputStream?) -> Void) {
-        
         completionHandler(self.request.body.stream)
     }
     
     func urlSession(_ session: URLSession, task: URLSessionTask, didSendBodyData bytesSent: Int64, totalBytesSent: Int64, totalBytesExpectedToSend: Int64) {
+        let progress = HTTPProgress(totalUnitCount: totalBytesExpectedToSend, completedUnitCount: totalBytesSent)
         self.syncQueue.async {
-            let progress = HTTPProgress(totalUnitCount: totalBytesExpectedToSend, completedUnitCount: totalBytesSent)
             self._uploadProgress = progress
             
-            if let callback = self._uploadProgressCallback {
+            if let callback = self.uploadProgressCallback {
                 self.workQueue.async {
                     callback(progress)
                 }
@@ -301,20 +305,19 @@ open class HTTPTask: HTTPTaskDelegating {
         
         self._urlResponse = response
         
-        self.syncQueue.async {
-            let callback = self.taskDelegate.dataTaskDidReceiveResponseCallback ?? self.nextTaskDelegating?.taskDelegate.dataTaskDidReceiveResponseCallback
-            self.workQueue.async {
-                callback?(session, dataTask, response, completionHandler)
-            }
+        let callback = self.taskDelegate.dataTaskDidReceiveResponseCallback ?? self.nextTaskDelegating?.taskDelegate.dataTaskDidReceiveResponseCallback
+        self.workQueue.async {
+            callback?(session, dataTask, response, completionHandler)
         }
     }
     
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didBecome downloadTask: URLSessionDownloadTask) {
-        
         self.syncQueue.async {
             self._kind = .download
-            self.client.unregister(self, for: dataTask)
-            self.client.register(self, for: downloadTask)
+            self.workQueue.async {
+                self.client.unregister(self, for: dataTask)
+                self.client.register(self, for: downloadTask)
+            }
         }
     }
     
@@ -332,7 +335,7 @@ open class HTTPTask: HTTPTaskDelegating {
         self.syncQueue.async {
             self._downloadProgress = progress
 
-            if let callback = self._downloadProgressCallback {
+            if let callback = self.downloadProgressCallback {
                 self.workQueue.async {
                     callback(progress)
                 }
@@ -342,24 +345,27 @@ open class HTTPTask: HTTPTaskDelegating {
     
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, willCacheResponse proposedResponse: CachedURLResponse, completionHandler: @escaping (CachedURLResponse?) -> Void) {
         
-        self.syncQueue.async {
-            let callback = self.taskDelegate.dataTaskWillCacheResponseCallback ?? self.nextTaskDelegating?.taskDelegate.dataTaskWillCacheResponseCallback
-            self.workQueue.async {
-                callback?(session, dataTask, proposedResponse, completionHandler)
-            }
+        let callback = self.taskDelegate.dataTaskWillCacheResponseCallback ?? self.nextTaskDelegating?.taskDelegate.dataTaskWillCacheResponseCallback
+        self.workQueue.async {
+            callback?(session, dataTask, proposedResponse, completionHandler)
         }
     }
     
     // MARK: download
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
-        let uuid = UUID().uuidString
         
-        let newLocation = location.deletingLastPathComponent().appendingPathComponent(uuid)
-        do {
-            try FileManager.default.moveItem(at: location, to: newLocation)
-            self._url = newLocation
-        } catch {
-            preconditionFailure("Can not persist file error: \(error)")
+        if let downloadLocation = self._downloadLocation {
+            do {
+                try FileManager.default.moveItem(at: location, to: downloadLocation)
+                self._url = downloadLocation
+            } catch {
+                self.sessionResponder.fail(.response(.canNotMoveDownloaded))
+            }
+        }
+        
+        let callback = self.taskDelegate.downloadTaskDidFinishDownloadingToLocationCallback ?? self.nextTaskDelegating?.taskDelegate.downloadTaskDidFinishDownloadingToLocationCallback
+        self.workQueue.sync {
+            callback?(session, downloadTask, location)
         }
     }
     
@@ -369,7 +375,7 @@ open class HTTPTask: HTTPTaskDelegating {
             let progress = HTTPProgress(totalUnitCount: expectedTotalBytes, completedUnitCount: fileOffset)
             self._downloadProgress = progress
             
-            if let callback = self._downloadProgressCallback {
+            if let callback = self.downloadProgressCallback {
                 self.workQueue.async {
                     callback(progress)
                 }
@@ -383,7 +389,7 @@ open class HTTPTask: HTTPTaskDelegating {
             let progress = HTTPProgress(totalUnitCount: totalBytesExpectedToWrite, completedUnitCount: totalBytesWritten)
             self._downloadProgress = progress
             
-            if let callback = self._downloadProgressCallback {
+            if let callback = self.downloadProgressCallback {
                 self.workQueue.async {
                     callback(progress)
                 }
@@ -391,3 +397,4 @@ open class HTTPTask: HTTPTaskDelegating {
         }
     }
 }
+
