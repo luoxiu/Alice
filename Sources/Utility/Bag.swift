@@ -3,6 +3,10 @@ import Foundation
 public struct BagToken: Hashable {
 
     fileprivate let val: UInt64
+    
+    public static func make() -> BagToken {
+        return .init(val: .max)
+    }
 }
 
 public struct Bag<Element> {

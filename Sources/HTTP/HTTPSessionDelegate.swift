@@ -1,7 +1,7 @@
 import Foundation
 
 /// Simply forward delegate message to client.
-class HTTPSessionDelegate: NSObject {
+class HTTPClientDelegate: NSObject {
     
     private var unmanagedClient: Unmanaged<HTTPClient>?
     
@@ -17,7 +17,7 @@ class HTTPSessionDelegate: NSObject {
     }
 }
 
-extension HTTPSessionDelegate: URLSessionDelegate {
+extension HTTPClientDelegate: URLSessionDelegate {
     
     func urlSession(_ session: URLSession, didBecomeInvalidWithError error: Error?) {
         
@@ -29,7 +29,6 @@ extension HTTPSessionDelegate: URLSessionDelegate {
         self.client?.urlSession(session, didReceive: challenge, completionHandler: completionHandler)
     }
     
-    
     #if !os(macOS)
     func urlSessionDidFinishEvents(forBackgroundURLSession session: URLSession) {
         
@@ -38,7 +37,7 @@ extension HTTPSessionDelegate: URLSessionDelegate {
     #endif
 }
 
-extension HTTPSessionDelegate: URLSessionTaskDelegate {
+extension HTTPClientDelegate: URLSessionTaskDelegate {
     
     func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) {
         
@@ -77,7 +76,7 @@ extension HTTPSessionDelegate: URLSessionTaskDelegate {
     }
 }
 
-extension HTTPSessionDelegate: URLSessionDataDelegate {
+extension HTTPClientDelegate: URLSessionDataDelegate {
     
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
         
@@ -100,7 +99,7 @@ extension HTTPSessionDelegate: URLSessionDataDelegate {
     }
 }
 
-extension HTTPSessionDelegate: URLSessionDownloadDelegate {
+extension HTTPClientDelegate: URLSessionDownloadDelegate {
     
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
         

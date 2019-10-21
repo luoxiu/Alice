@@ -11,22 +11,23 @@ extension HTTPTask {
     }
 }
 
-open class HTTPTask {
+open class HTTPTask: HTTPTaskDelegating {
     
     // MARK: - Properties
     
-    // MARK: util
     let workQueue: DispatchQueue
     private let syncQueue: DispatchQueue
     
-    // MARK: status
+    public let taskDelegate = HTTPTaskDelegate()
+    public var nextTaskDelegating: HTTPTaskDelegating? {
+        return self.client
+    }
+    
     private var _isStarted: Bool
     private var _kind: Kind
     
-    // MARK: middleware
     private var _middlewares: Bag<HTTPMiddleware>
     
-    // MARK: progress
     public typealias ProgressCallback = (HTTPProgress) -> Void
     
     private var _uploadProgress = HTTPProgress(totalUnitCount: 0, completedUnitCount: 0)
@@ -54,27 +55,6 @@ open class HTTPTask {
     
     // MARK: download task
     private var _url: URL?
-    
-    // MARK: event
-    private var _taskWillPerformHTTPRedirectionCallback: TaskWillPerformHTTPRedirectionCallback?
-    private var _taskDidReceiveChallengeCallback: TaskDidReceiveChallengeCallback?
-    private var _dataTaskDidReceiveResponseCallback: DataTaskDidReceiveResponseCallback?
-    private var _dataTaskWillCacheResponseCallback: DataTaskWillCacheResponseCallback?
-    
-    private weak var _delegate: HTTPTaskDelegate?
-    
-    public weak var delegate: HTTPTaskDelegate? {
-        get {
-            return self.syncQueue.sync {
-                self._delegate
-            }
-        }
-        set {
-            self.syncQueue.async {
-                self._delegate = newValue
-            }
-        }
-    }
     
     // MARK: - Init
     init(_ client: HTTPClient, _ request: HTTPRequest, _ kind: Kind) {
@@ -232,34 +212,6 @@ open class HTTPTask {
             completionHandler($0)
         })
     }
-    
-    // MARK: - Event Callback
-    open func onTaskWillPerformHTTPRedirection(_ callback: @escaping TaskWillPerformHTTPRedirectionCallback) -> Self {
-        self.syncQueue.async {
-            self._taskWillPerformHTTPRedirectionCallback = callback
-        }
-        return self
-    }
-    
-    open func onTaskDidReceiveChallenge(_ callback: @escaping TaskDidReceiveChallengeCallback) -> Self {
-        self.syncQueue.async {
-            self._taskDidReceiveChallengeCallback = callback
-        }
-        return self
-    }
-    
-    open func onDataTaskDidReceiveResponse(_ callback: @escaping DataTaskDidReceiveResponseCallback) -> Self {
-        self.syncQueue.async {
-            self._dataTaskDidReceiveResponseCallback = callback
-        }
-        return self
-    }
-    open func onDataTaskWillCacheResponse(_ callback: @escaping DataTaskWillCacheResponseCallback) -> Self {
-        self.syncQueue.async {
-            self._dataTaskWillCacheResponseCallback = callback
-        }
-        return self
-    }
 
     // MARK: - Delegate
     
@@ -298,12 +250,9 @@ open class HTTPTask {
     func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) {
         
         self.syncQueue.async {
-            let callback = self._taskWillPerformHTTPRedirectionCallback
-                ?? self._delegate?.urlSession(_:task:willPerformHTTPRedirection:newRequest:completionHandler:)
-                ?? self.client.__urlSession(_:task:willPerformHTTPRedirection:newRequest:completionHandler:)
-            
+            let callback = self.taskDelegate.taskWillPerformHTTPRedirectionCallback ?? self.nextTaskDelegating?.taskDelegate.taskWillPerformHTTPRedirectionCallback
             self.workQueue.async {
-                callback(session, task, response, request, completionHandler)
+                callback?(session, task, response, request, completionHandler)
             }
         }
     }
@@ -311,12 +260,9 @@ open class HTTPTask {
     func urlSession(_ session: URLSession, task: URLSessionTask, didReceive challenge: URLAuthenticationChallenge, completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
         
         self.syncQueue.async {
-            let callback = self._taskDidReceiveChallengeCallback
-                ?? self._delegate?.urlSession(_:task:didReceive:completionHandler:)
-                ?? self.client.__urlSession(_:task:didReceive:completionHandler:)
-            
+            let callback = self.taskDelegate.taskDidReceiveChallengeCallback ?? self.nextTaskDelegating?.taskDelegate.taskDidReceiveChallengeCallback
             self.workQueue.async {
-                callback(session, task, challenge, completionHandler)
+                callback?(session, task, challenge, completionHandler)
             }
         }
     }
@@ -356,13 +302,9 @@ open class HTTPTask {
         self._urlResponse = response
         
         self.syncQueue.async {
-            
-            let callback = self._dataTaskDidReceiveResponseCallback
-                ?? self._delegate?.urlSession(_:dataTask:didReceive:completionHandler:)
-                ?? self.client.__urlSession(_:dataTask:didReceive:completionHandler:)
-            
+            let callback = self.taskDelegate.dataTaskDidReceiveResponseCallback ?? self.nextTaskDelegating?.taskDelegate.dataTaskDidReceiveResponseCallback
             self.workQueue.async {
-                callback(session, dataTask, response, completionHandler)
+                callback?(session, dataTask, response, completionHandler)
             }
         }
     }
@@ -401,12 +343,9 @@ open class HTTPTask {
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, willCacheResponse proposedResponse: CachedURLResponse, completionHandler: @escaping (CachedURLResponse?) -> Void) {
         
         self.syncQueue.async {
-            let callback = self._dataTaskWillCacheResponseCallback
-                ?? self._delegate?.urlSession(_:dataTask:willCacheResponse:completionHandler:)
-                ?? self.client.__urlSession(_:dataTask:willCacheResponse:completionHandler:)
-            
+            let callback = self.taskDelegate.dataTaskWillCacheResponseCallback ?? self.nextTaskDelegating?.taskDelegate.dataTaskWillCacheResponseCallback
             self.workQueue.async {
-                callback(session, dataTask, proposedResponse, completionHandler)
+                callback?(session, dataTask, proposedResponse, completionHandler)
             }
         }
     }

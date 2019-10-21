@@ -1,7 +1,9 @@
 import Foundation
 import Utility
 
-open class HTTPClient {
+open class HTTPClient: HTTPSessionDelegating {
+    public var nextTaskDelegating: HTTPTaskDelegating?
+    
     
     // MARK: - Properties
     
@@ -9,22 +11,10 @@ open class HTTPClient {
     private let syncQueue: DispatchQueue
     
     public let session: URLSession
+    public let sessionDelegate = HTTPSessionDelegate()
     
     private var _taskRegistry: [URLSessionTask: HTTPTask]
     private var _middlewares: Bag<HTTPMiddleware>
-    
-    private var _sessionDidReceiveChallengeCallback: SessionDidReceiveChallengeCallback?
-    private var _taskWillPerformHTTPRedirectionCallback: TaskWillPerformHTTPRedirectionCallback?
-    private var _taskDidReceiveChallengeCallback: TaskDidReceiveChallengeCallback?
-    private var _dataTaskDidReceiveResponseCallback: DataTaskDidReceiveResponseCallback?
-    private var _dataTaskWillCacheResponseCallback: DataTaskWillCacheResponseCallback?
-    
-    private weak var _delegate: HTTPClientDelegate?
-    
-    public var delegate: HTTPClientDelegate? {
-        get { return self.syncQueue.sync { self._delegate } }
-        set { self.syncQueue.async { self._delegate = newValue } }
-    }
     
     // MARK: - Init
     public init(configuration: URLSessionConfiguration) {
@@ -34,7 +24,7 @@ open class HTTPClient {
         self._taskRegistry = [:]
         self._middlewares = Bag()
         
-        let sessionDelegate = HTTPSessionDelegate()
+        let sessionDelegate = HTTPClientDelegate()
         
         self.session = URLSession(
             configuration: configuration,
@@ -47,7 +37,7 @@ open class HTTPClient {
     
     public convenience init() {
         let conf = URLSessionConfiguration.default
-        if #available(OSX 10.13, *) {
+        if #available(iOS 11.0, macOS 10.13, tvOS 11.0, watchOS 4.0, *) {
             conf.waitsForConnectivity = true
         }
         self.init(configuration: conf)
@@ -58,31 +48,6 @@ open class HTTPClient {
     }
     
     // MARK: - Methods
-    
-    // MARK: session
-    
-    open func onSessionDidReceiveChallenge(_ callback: @escaping SessionDidReceiveChallengeCallback) -> Self {
-        self.syncQueue.async {
-            self._sessionDidReceiveChallengeCallback = callback
-        }
-        return self
-    }
-    
-    // MARK: task
-    
-    open func onTaskWillPerformHTTPRedirection(_ callback: @escaping TaskWillPerformHTTPRedirectionCallback) -> Self {
-        self.syncQueue.async {
-            self._taskWillPerformHTTPRedirectionCallback = callback
-        }
-        return self
-    }
-    
-    open func onTaskDidReceiveChallenge(_ callback: @escaping TaskDidReceiveChallengeCallback) -> Self {
-        self.syncQueue.async {
-            self._taskDidReceiveChallengeCallback = callback
-        }
-        return self
-    }
     
     func register(_ httpTask: HTTPTask, for sessionTask: URLSessionTask) {
         self.syncQueue.async {
@@ -96,28 +61,20 @@ open class HTTPClient {
         }
     }
     
-    func withHTTPTask(of sessionTask: URLSessionTask, _ body: @escaping (HTTPTask) -> Void) {
+    func httpTask(for sessionTask: URLSessionTask, _ body: @escaping (HTTPTask) -> Void) {
         self.syncQueue.async {
             if let t = self._taskRegistry[sessionTask] {
-                body(t)
+                self.workQueue.async {
+                    body(t)
+                }
             }
         }
     }
     
-    // MARK: data task
-    
-    open func onDataTaskDidReceiveResponse(_ callback: @escaping DataTaskDidReceiveResponseCallback) -> Self {
-        self.syncQueue.async {
-            self._dataTaskDidReceiveResponseCallback = callback
+    open var allTasks: [HTTPTask] {
+        return self.syncQueue.sync {
+            Array(self._taskRegistry.values)
         }
-        return self
-    }
-    
-    open func onDataTaskWillCacheResponse(_ callback: @escaping DataTaskWillCacheResponseCallback) -> Self {
-        self.syncQueue.async {
-            self._dataTaskWillCacheResponseCallback = callback
-        }
-        return self
     }
     
     // MARK: middlware
@@ -147,9 +104,9 @@ open class HTTPClient {
     }
     
     @discardableResult
-    open func use(_ mw: HTTPMiddleware, when match: HTTPRequestMatcher) -> Self {
+    open func use(_ mw: HTTPMiddleware, when matcher: HTTPRequestMatcher) -> Self {
         let new = HTTPAnyMiddleware { (request, responder) in
-            if match.matches(request) {
+            if matcher.matches(request) {
                 return try mw.respond(to: request, chainingTo: responder)
             } else {
                 return try responder.respond(to: request)
@@ -166,7 +123,7 @@ open class HTTPClient {
     
     open var middlewares: [HTTPMiddleware] {
         return self.syncQueue.sync {
-            Array(self._middlewares)
+            Array(self.middlewares)
         }
     }
     
@@ -184,158 +141,80 @@ open class HTTPClient {
         }
         return Shared.client
     }
-
-    // MARK: - URLTaskDelegate Fallback
-    
-    func __urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) {
-        self.syncQueue.async {
-            let callback = self._taskWillPerformHTTPRedirectionCallback
-                ?? self._delegate?.urlSession(_:task:willPerformHTTPRedirection:newRequest:completionHandler:)
-            
-            if let callback = callback {
-                self.workQueue.async {
-                    callback(session, task, response, request, completionHandler)
-                }
-            } else {
-                self.workQueue.async {
-                    completionHandler(request)
-                }
-            }
-        }
-    }
-    
-    func __urlSession(_ session: URLSession, task: URLSessionTask, didReceive challenge: URLAuthenticationChallenge, completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
-
-        self.syncQueue.async {
-            let callback = self._taskDidReceiveChallengeCallback
-                ?? self._delegate?.urlSession(_:task:didReceive:completionHandler:)
-            
-            if let callback = callback {
-                self.workQueue.async {
-                    callback(session, task, challenge, completionHandler)
-                }
-            } else {
-                self.workQueue.async {
-                    completionHandler(.performDefaultHandling, nil)
-                }
-            }
-        }
-    }
-    
-    func __urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
-        
-        self.syncQueue.async {
-            let callback = self._dataTaskDidReceiveResponseCallback
-                ?? self._delegate?.urlSession(_:dataTask:didReceive:completionHandler:)
-            
-            if let callback = callback {
-                self.workQueue.async {
-                    callback(session, dataTask, response, completionHandler)
-                }
-            } else {
-                self.workQueue.async {
-                    completionHandler(.allow)
-                }
-            }
-        }
-    }
-    
-    func __urlSession(_ session: URLSession, dataTask: URLSessionDataTask, willCacheResponse proposedResponse: CachedURLResponse, completionHandler: @escaping (CachedURLResponse?) -> Void) {
-        
-        self.syncQueue.async {
-            let callback = self._dataTaskWillCacheResponseCallback
-                ?? self._delegate?.urlSession(_:dataTask:willCacheResponse:completionHandler:)
-            
-            if let callback = callback {
-                self.workQueue.async {
-                    callback(session, dataTask, proposedResponse, completionHandler)
-                }
-            } else {
-                self.workQueue.async {
-                    completionHandler(proposedResponse)
-                }
-            }
-        }
-    }
     
     // MARK: - URLSessionDelegate
 
     // MARK: session
     
     func urlSession(_ session: URLSession, didBecomeInvalidWithError error: Error?) {
-        self.syncQueue.async {
-            for (sessionTask, httpTask) in self._taskRegistry {
-                httpTask.urlSession(session, task: sessionTask, didCompleteWithError: error)
+        if let callback = self.sessionDelegate.sessionDidBecomeInvalidWithErrorCallback {
+            self.workQueue.async {
+                callback(session, error)
             }
-            self._taskRegistry.removeAll()
+            return
         }
     }
     
     func urlSession(_ session: URLSession, didReceive challenge: URLAuthenticationChallenge, completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
-        
-        self.syncQueue.async {
-            
-            let callback = self._sessionDidReceiveChallengeCallback
-                ?? self._delegate?.urlSession(_:didReceive:completionHandler:)
-            
-            if let callback = callback {
-                self.workQueue.async {
-                    callback(session, challenge, completionHandler)
-                }
-            } else {
-                self.workQueue.async {
-                    completionHandler(.performDefaultHandling, nil)
-                }
+        if let callback = self.sessionDelegate.sessionDidReceiveChallengeCallback {
+            self.workQueue.async {
+                callback(session, challenge, completionHandler)
             }
+            return
+        }
+        self.workQueue.async {
+            completionHandler(.performDefaultHandling, nil)
         }
     }
     
-    
-    #if !os(macOS)
     func urlSessionDidFinishEvents(forBackgroundURLSession session: URLSession) {
-        
+        if let callback = self.sessionDelegate.sessionDidFinishEventsCallback {
+            self.workQueue.async {
+                callback(session)
+            }
+            return
+        }
     }
-    #endif
 
     // MARK: task
     
     func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) {
         
-        self.withHTTPTask(of: task) {
+        self.httpTask(for: task) {
             $0.urlSession(session, task: task, willPerformHTTPRedirection: response, newRequest: request, completionHandler: completionHandler)
         }
     }
     
     func urlSession(_ session: URLSession, task: URLSessionTask, didReceive challenge: URLAuthenticationChallenge, completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
         
-        self.withHTTPTask(of: task) {
+        self.httpTask(for: task) {
             $0.urlSession(session, task: task, didReceive: challenge, completionHandler: completionHandler)
         }
     }
     
     func urlSession(_ session: URLSession, task: URLSessionTask, needNewBodyStream completionHandler: @escaping (InputStream?) -> Void) {
         
-        self.withHTTPTask(of: task) {
+        self.httpTask(for: task) {
             $0.urlSession(session, task: task, needNewBodyStream: completionHandler)
         }
     }
     
     func urlSession(_ session: URLSession, task: URLSessionTask, didSendBodyData bytesSent: Int64, totalBytesSent: Int64, totalBytesExpectedToSend: Int64) {
         
-        self.withHTTPTask(of: task) {
+        self.httpTask(for: task) {
             $0.urlSession(session, task: task, didSendBodyData: bytesSent, totalBytesSent: totalBytesSent, totalBytesExpectedToSend: totalBytesExpectedToSend)
         }
     }
     
     func urlSession(_ session: URLSession, task: URLSessionTask, didFinishCollecting metrics: URLSessionTaskMetrics) {
         
-        self.withHTTPTask(of: task) {
+        self.httpTask(for: task) {
             $0.urlSession(session, task: task, didFinishCollecting: metrics)
         }
     }
     
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
-        self.withHTTPTask(of: task) {
+        self.httpTask(for: task) {
             $0.urlSession(session, task: task, didCompleteWithError: error)
         }
     }
@@ -343,7 +222,7 @@ open class HTTPClient {
     @available(iOS 11.0, macOS 10.13, tvOS 11.0, watchOS 4.0, *)
     func urlSession(_ session: URLSession, task: URLSessionTask, willBeginDelayedRequest request: URLRequest, completionHandler: @escaping (URLSession.DelayedRequestDisposition, URLRequest?) -> Void) {
         
-        self.withHTTPTask(of: task) {
+        self.httpTask(for: task) {
             $0.urlSession(session, task: task, willBeginDelayedRequest: request, completionHandler: completionHandler)
         }
     }
@@ -352,28 +231,28 @@ open class HTTPClient {
     
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
         
-        self.withHTTPTask(of: dataTask) {
+        self.httpTask(for: dataTask) {
             $0.urlSession(session, dataTask: dataTask, didReceive: response, completionHandler: completionHandler)
         }
     }
     
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didBecome downloadTask: URLSessionDownloadTask) {
         
-        self.withHTTPTask(of: dataTask) {
+        self.httpTask(for: dataTask) {
             $0.urlSession(session, dataTask: dataTask, didBecome: downloadTask)
         }
     }
     
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
         
-        self.withHTTPTask(of: dataTask) {
+        self.httpTask(for: dataTask) {
             $0.urlSession(session, dataTask: dataTask, didReceive: data)
         }
     }
     
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, willCacheResponse proposedResponse: CachedURLResponse, completionHandler: @escaping (CachedURLResponse?) -> Void) {
         
-        self.withHTTPTask(of: dataTask) {
+        self.httpTask(for: dataTask) {
             $0.urlSession(session, dataTask: dataTask, willCacheResponse: proposedResponse, completionHandler: completionHandler)
         }
     }
@@ -382,21 +261,21 @@ open class HTTPClient {
     
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
         
-        self.withHTTPTask(of: downloadTask) {
+        self.httpTask(for: downloadTask) {
             $0.urlSession(session, downloadTask: downloadTask, didFinishDownloadingTo: location)
         }
     }
     
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData bytesWritten: Int64, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
         
-        self.withHTTPTask(of: downloadTask) {
+        self.httpTask(for: downloadTask) {
             $0.urlSession(session, downloadTask: downloadTask, didWriteData: bytesWritten, totalBytesWritten: totalBytesWritten, totalBytesExpectedToWrite: totalBytesExpectedToWrite)
         }
     }
     
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didResumeAtOffset fileOffset: Int64, expectedTotalBytes: Int64) {
         
-        self.withHTTPTask(of: downloadTask) {
+        self.httpTask(for: downloadTask) {
             $0.urlSession(session, downloadTask: downloadTask, didResumeAtOffset: fileOffset, expectedTotalBytes: expectedTotalBytes)
         }
     }
