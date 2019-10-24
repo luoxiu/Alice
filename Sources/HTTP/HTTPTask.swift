@@ -14,17 +14,12 @@ extension HTTPTask {
 // TODO: Redesgin init part
 // TODO: Redesign delegate part
 
-open class HTTPTask: HTTPTaskDelegating {
+open class HTTPTask {
     
     // MARK: - Properties
     
     let workQueue: DispatchQueue
     private let syncQueue: DispatchQueue
-    
-    public let taskDelegate = HTTPTaskDelegate()
-    public var nextTaskDelegating: HTTPTaskDelegating? {
-        return self.client
-    }
     
     private var _isStarted: Bool
     private var _kind: Kind
@@ -257,19 +252,9 @@ open class HTTPTask: HTTPTaskDelegating {
     }
     
     func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) {
-        
-        let callback = self.taskDelegate.taskWillPerformHTTPRedirectionCallback ?? self.nextTaskDelegating?.taskDelegate.taskWillPerformHTTPRedirectionCallback
-        self.workQueue.async {
-            callback?(session, task, response, request, completionHandler)
-        }
     }
     
     func urlSession(_ session: URLSession, task: URLSessionTask, didReceive challenge: URLAuthenticationChallenge, completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
-        
-        let callback = self.taskDelegate.taskDidReceiveChallengeCallback ?? self.nextTaskDelegating?.taskDelegate.taskDidReceiveChallengeCallback
-        self.workQueue.async {
-            callback?(session, task, challenge, completionHandler)
-        }
     }
     
     func urlSession(_ session: URLSession, task: URLSessionTask, needNewBodyStream completionHandler: @escaping (InputStream?) -> Void) {
@@ -304,11 +289,6 @@ open class HTTPTask: HTTPTaskDelegating {
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
         
         self._urlResponse = response
-        
-        let callback = self.taskDelegate.dataTaskDidReceiveResponseCallback ?? self.nextTaskDelegating?.taskDelegate.dataTaskDidReceiveResponseCallback
-        self.workQueue.async {
-            callback?(session, dataTask, response, completionHandler)
-        }
     }
     
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didBecome downloadTask: URLSessionDownloadTask) {
@@ -344,11 +324,7 @@ open class HTTPTask: HTTPTaskDelegating {
     }
     
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, willCacheResponse proposedResponse: CachedURLResponse, completionHandler: @escaping (CachedURLResponse?) -> Void) {
-        
-        let callback = self.taskDelegate.dataTaskWillCacheResponseCallback ?? self.nextTaskDelegating?.taskDelegate.dataTaskWillCacheResponseCallback
-        self.workQueue.async {
-            callback?(session, dataTask, proposedResponse, completionHandler)
-        }
+
     }
     
     // MARK: download
@@ -361,11 +337,6 @@ open class HTTPTask: HTTPTaskDelegating {
             } catch {
                 self.sessionResponder.fail(.response(.canNotMoveDownloaded))
             }
-        }
-        
-        let callback = self.taskDelegate.downloadTaskDidFinishDownloadingToLocationCallback ?? self.nextTaskDelegating?.taskDelegate.downloadTaskDidFinishDownloadingToLocationCallback
-        self.workQueue.sync {
-            callback?(session, downloadTask, location)
         }
     }
     

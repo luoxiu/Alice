@@ -1,9 +1,7 @@
 import Foundation
 import Utility
 
-open class HTTPClient: HTTPSessionDelegating {
-    public var nextTaskDelegating: HTTPTaskDelegating?
-    
+open class HTTPClient {
     
     // MARK: - Properties
     
@@ -11,7 +9,6 @@ open class HTTPClient: HTTPSessionDelegating {
     private let syncQueue: DispatchQueue
     
     public let session: URLSession
-    public let sessionDelegate = HTTPSessionDelegate()
     
     private var _taskRegistry: [URLSessionTask: HTTPTask]
     private var _middlewares: Bag<HTTPMiddleware>
@@ -158,33 +155,15 @@ open class HTTPClient: HTTPSessionDelegating {
     // MARK: session
     
     func urlSession(_ session: URLSession, didBecomeInvalidWithError error: Error?) {
-        if let callback = self.sessionDelegate.sessionDidBecomeInvalidWithErrorCallback {
-            self.workQueue.async {
-                callback(session, error)
-            }
-            return
-        }
     }
     
     func urlSession(_ session: URLSession, didReceive challenge: URLAuthenticationChallenge, completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
-        if let callback = self.sessionDelegate.sessionDidReceiveChallengeCallback {
-            self.workQueue.async {
-                callback(session, challenge, completionHandler)
-            }
-            return
-        }
         self.workQueue.async {
             completionHandler(.performDefaultHandling, nil)
         }
     }
     
     func urlSessionDidFinishEvents(forBackgroundURLSession session: URLSession) {
-        if let callback = self.sessionDelegate.sessionDidFinishEventsCallback {
-            self.workQueue.async {
-                callback(session)
-            }
-            return
-        }
     }
 
     // MARK: task
