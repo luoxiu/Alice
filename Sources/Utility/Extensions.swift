@@ -25,15 +25,6 @@ extension DispatchQueue {
         }
         return DispatchQueue.getSpecific(key: key) != nil
     }
-    
-    
-    public func safeSync<T>(_ body: () throws -> T) rethrows -> T {
-        if DispatchQueue.is(self) {
-            return try body()
-        } else {
-            return try self.sync(execute: body)
-        }
-    }
 }
 
 extension Result {
