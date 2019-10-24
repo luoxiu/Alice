@@ -1,6 +1,6 @@
 import Foundation
 
-/// Simply forward delegate message to client.
+/// Simply forward delegate messages to client.
 class HTTPClientDelegate: NSObject {
     
     private var unmanagedClient: Unmanaged<HTTPClient>?

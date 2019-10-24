@@ -2,14 +2,12 @@ import Foundation
 
 extension NSLocking {
     
-    @inlinable
     public func withLock<T>(_ body: () throws -> T) rethrows -> T {
         self.lock()
         defer { self.unlock() }
         return try body()
     }
     
-    @inlinable
     public func withLockVoid(_ body: () throws -> Void) rethrows {
         self.lock()
         defer { self.unlock() }
@@ -19,7 +17,6 @@ extension NSLocking {
 
 extension DispatchQueue {
     
-    @inlinable
     public static func `is`(_ queue: DispatchQueue) -> Bool {
         let key = DispatchSpecificKey<Void>()
         queue.setSpecific(key: key, value: ())
@@ -28,17 +25,24 @@ extension DispatchQueue {
         }
         return DispatchQueue.getSpecific(key: key) != nil
     }
+    
+    
+    public func safeSync<T>(_ body: () throws -> T) rethrows -> T {
+        if DispatchQueue.is(self) {
+            return try body()
+        } else {
+            return try self.sync(execute: body)
+        }
+    }
 }
 
 extension Result {
     
-    @inlinable
     public var success: Success? {
         if case .success(let v) = self { return v }
         return nil
     }
     
-    @inlinable
     public var failure: Failure? {
         if case .failure(let e) = self { return e }
         return nil
@@ -47,7 +51,7 @@ extension Result {
 
 extension Optional {
     
-    public  mutating func clear() -> Wrapped? {
+    public mutating func clear() -> Wrapped? {
         defer { self = nil }
         return self
     }
@@ -69,3 +73,4 @@ extension String {
         return self as NSString
     }
 }
+

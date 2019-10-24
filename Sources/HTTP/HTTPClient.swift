@@ -4,29 +4,27 @@ import Utility
 open class HTTPClient {
     
     // MARK: - Properties
-    
-    let workQueue: DispatchQueue
-    private let syncQueue: DispatchQueue
-    
+    private var middlewares: Bag<HTTPMiddleware>
+    private var taskRegistry: [URLSessionTask: HTTPTask]
+    private let workQueue: DispatchQueue
     public let session: URLSession
-    
-    private var _taskRegistry: [URLSessionTask: HTTPTask]
-    private var _middlewares: Bag<HTTPMiddleware>
-    
+        
     // MARK: - Init
     public init(configuration: URLSessionConfiguration) {
-        self.workQueue = DispatchQueue(label: UUID().uuidString)
-        self.syncQueue = DispatchQueue(label: UUID().uuidString)
+        self.taskRegistry = [:]
+        self.middlewares = Bag()
         
-        self._taskRegistry = [:]
-        self._middlewares = Bag()
+        self.workQueue = DispatchQueue(label: UUID().uuidString)
+        
+        let delegateQueue = OperationQueue()
+        delegateQueue.underlyingQueue = self.workQueue
         
         let sessionDelegate = HTTPClientDelegate()
         
         self.session = URLSession(
             configuration: configuration,
             delegate: sessionDelegate,
-            delegateQueue: nil
+            delegateQueue: delegateQueue
         )
         
         sessionDelegate.client = self
@@ -47,30 +45,26 @@ open class HTTPClient {
     // MARK: - Methods
     
     func register(_ httpTask: HTTPTask, for sessionTask: URLSessionTask) {
-        self.syncQueue.async {
-            self._taskRegistry[sessionTask] = httpTask
+        self.workQueue.async {
+            self.taskRegistry[sessionTask] = httpTask
         }
     }
     
     func unregister(_ httpTask: HTTPTask, for sessionTask: URLSessionTask) {
-        self.syncQueue.async {
-            self._taskRegistry[sessionTask] = nil
+        self.workQueue.async {
+            self.taskRegistry[sessionTask] = nil
         }
     }
     
-    func httpTask(for sessionTask: URLSessionTask, _ body: @escaping (HTTPTask) -> Void) {
-        self.syncQueue.async {
-            if let t = self._taskRegistry[sessionTask] {
-                self.workQueue.async {
-                    body(t)
-                }
-            }
+    func httpTask(for sessionTask: URLSessionTask, _ body: (HTTPTask) -> Void) {
+        if let task = self.taskRegistry[sessionTask] {
+            body(task)
         }
     }
     
     open var allTasks: [HTTPTask] {
-        return self.syncQueue.sync {
-            Array(self._taskRegistry.values)
+        return self.workQueue.safeSync {
+            Array(self.taskRegistry.values)
         }
     }
     
@@ -78,24 +72,24 @@ open class HTTPClient {
     
     @discardableResult
     open func use(_ mw: HTTPMiddleware) -> Self {
-        self.syncQueue.async {
-            self._middlewares.append(mw)
+        self.workQueue.async {
+            self.middlewares.append(mw)
         }
         return self
     }
     
     @discardableResult
     open func use(_ mw: @escaping (HTTPRequest, HTTPResponder) -> Future<HTTPResponse, Error>) -> Self {
-        self.syncQueue.async {
-            self._middlewares.append(HTTPAnyMiddleware(mw))
+        self.workQueue.async {
+            self.middlewares.append(HTTPAnyMiddleware(mw))
         }
         return self
     }
     
     @discardableResult
     open func use(_ mw: HTTPMiddleware, _ token: inout BagToken) -> Self {
-        self.syncQueue.sync {
-            token = self._middlewares.append(mw)
+        self.workQueue.safeSync {
+            token = self.middlewares.append(mw)
         }
         return self
     }
@@ -113,14 +107,14 @@ open class HTTPClient {
     }
     
     open func removeMiddleware(for token: BagToken) -> HTTPMiddleware? {
-        return self.syncQueue.sync {
-            self._middlewares.removeValue(for: token)
+        return self.workQueue.safeSync {
+            self.middlewares.removeValue(for: token)
         }
     }
     
-    open var middlewares: [HTTPMiddleware] {
-        return self.syncQueue.sync {
-            Array(self._middlewares)
+    open var allMiddlewares: Bag<HTTPMiddleware> {
+        return self.workQueue.safeSync {
+            self.middlewares
         }
     }
     
@@ -158,9 +152,8 @@ open class HTTPClient {
     }
     
     func urlSession(_ session: URLSession, didReceive challenge: URLAuthenticationChallenge, completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
-        self.workQueue.async {
-            completionHandler(.performDefaultHandling, nil)
-        }
+
+        completionHandler(.performDefaultHandling, nil)
     }
     
     func urlSessionDidFinishEvents(forBackgroundURLSession session: URLSession) {

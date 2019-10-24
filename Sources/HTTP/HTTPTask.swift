@@ -12,7 +12,6 @@ extension HTTPTask {
 }
 
 // TODO: Redesgin init part
-// TODO: Redesign delegate part
 
 open class HTTPTask {
     
@@ -181,7 +180,7 @@ open class HTTPTask {
             self._isStarted = true
             
             self.workQueue.async {
-                let middlewares = self.client.middlewares + self.middlewares
+                let middlewares = self.client.allMiddlewares + self.middlewares
                 let responder = middlewares.makeResponder(chainingTo: self.sessionResponder)
                 do {
                     try responder.respond(to: self.request).pipe(to: self.responsePromise)
