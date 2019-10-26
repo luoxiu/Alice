@@ -165,9 +165,13 @@ open class HTTPTask {
             
             self._isStarted = true
             
-            self.workQueue.async {
-                let middlewares = self.client.allMiddlewares + self.middlewares
-                let responder = middlewares.makeResponder(chainingTo: self.sessionResponder)
+            self.client
+            .getAllMiddlewares(on: self.workQueue)
+            .map { middlewares -> HTTPResponder in
+                let allMiddlewares = middlewares + self.middlewares
+                return allMiddlewares.makeResponder(chainingTo: self.sessionResponder)
+            }
+            .whenSucceed { responder in
                 do {
                     try responder.respond(to: self.request).pipe(to: self.responsePromise)
                 } catch let e {

@@ -1,4 +1,5 @@
 import Foundation
+import Async
 import Utility
 
 open class HTTPClient {
@@ -6,13 +7,14 @@ open class HTTPClient {
     private var taskRegistry: [URLSessionTask: HTTPTask]
     private var middlewares: [HTTPMiddleware]
     
-    private let lock = Lock()
+    private let workQueue: DispatchQueue
     
     public let session: URLSession
 
     public init(configuration: URLSessionConfiguration) {
         self.taskRegistry = [:]
         self.middlewares = []
+        self.workQueue = DispatchQueue(label: UUID().uuidString, attributes: .concurrent)
         
         let sessionDelegate = Delegate()
         
@@ -38,50 +40,55 @@ open class HTTPClient {
     }
     
     func register(_ httpTask: HTTPTask, for sessionTask: URLSessionTask) {
-        self.lock.withLockVoid {
+        self.workQueue.async(flags: .barrier) {
             self.taskRegistry[sessionTask] = httpTask
         }
     }
     
     func unregister(_ httpTask: HTTPTask, for sessionTask: URLSessionTask) {
-        self.lock.withLockVoid {
+        self.workQueue.async(flags: .barrier) {
             self.taskRegistry[sessionTask] = nil
         }
     }
     
     func httpTask(for sessionTask: URLSessionTask, _ body: (HTTPTask) -> Void) {
-        if let task = self.lock.withLock({ self.taskRegistry[sessionTask] }) {
+        if let task = self.workQueue.sync(execute: { self.taskRegistry[sessionTask] }) {
             body(task)
         }
     }
     
-    open var allTasks: [HTTPTask] {
-        return self.lock.withLock {
-            Array(self.taskRegistry.values)
+    open func getAllTasks(on scheduler: Scheduler) -> Future<[HTTPTask], Never> {
+        let promise = Promise<[HTTPTask], Never>()
+        
+        self.workQueue.async {
+            promise.succeed(Array(self.taskRegistry.values))
         }
+        
+        return promise.future.yield(on: scheduler)
     }
     
+    // MARK: - Middleware
     @discardableResult
-    open func use(_ mw: HTTPMiddleware) -> Self {
-        self.lock.withLockVoid {
-            self.middlewares.append(mw)
-        }
-        return self
-    }
-    
-    @discardableResult
-    open func use(_ mw: @escaping (HTTPRequest, HTTPResponder) -> Future<HTTPResponse, Error>) -> Self {
-        self.lock.withLockVoid {
-            self.middlewares.append(HTTPAnyMiddleware(mw))
+    open func use(_ middleware: HTTPMiddleware) -> Self {
+        self.workQueue.async(flags: .barrier) {
+            self.middlewares.append(middleware)
         }
         return self
     }
     
     @discardableResult
-    open func use(_ mw: HTTPMiddleware, when matcher: HTTPRequestMatcher) -> Self {
+    open func use(_ middleware: @escaping (HTTPRequest, HTTPResponder) -> Future<HTTPResponse, Error>) -> Self {
+        self.workQueue.async(flags: .barrier) {
+            self.middlewares.append(HTTPAnyMiddleware(middleware))
+        }
+        return self
+    }
+    
+    @discardableResult
+    open func use(_ middleware: HTTPMiddleware, when matcher: HTTPRequestMatcher) -> Self {
         let new = HTTPAnyMiddleware { (request, responder) in
             if matcher.matches(request) {
-                return try mw.respond(to: request, chainingTo: responder)
+                return try middleware.respond(to: request, chainingTo: responder)
             } else {
                 return try responder.respond(to: request)
             }
@@ -89,12 +96,17 @@ open class HTTPClient {
         return self.use(new)
     }
     
-    open var allMiddlewares: [HTTPMiddleware] {
-        return self.lock.withLock {
-            Array(self.middlewares)
+    open func getAllMiddlewares(on scheduler: Scheduler) -> Future<[HTTPMiddleware], Never> {
+        let promise = Promise<[HTTPMiddleware], Never>()
+        
+        self.workQueue.async {
+            promise.succeed(self.middlewares)
         }
+        
+        return promise.future.yield(on: scheduler)
     }
     
+    // MARK: - Request
     open func request(_ request: HTTPRequest) -> HTTPTask {
         return HTTPTask(self, request, .data)
     }
@@ -111,6 +123,7 @@ open class HTTPClient {
         return HTTPTask(self, HTTPRequest(method: .get, url: HTTPURL(url)), .data, true)
     }
     
+    // MARK: - Shared
     open class var shared: HTTPClient {
         enum Shared {
             static let client = HTTPClient()
