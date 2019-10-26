@@ -21,7 +21,7 @@ public enum HTTPError: Error {
     
     // Response Error
     public enum ResponseErrorReason {
-        case canNotMoveDownloaded
+        case canNotMoveDownloadedFile(Error)
         case badResponse(String?)
     }
     case response(ResponseErrorReason)

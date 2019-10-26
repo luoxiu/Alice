@@ -177,13 +177,12 @@ extension HTTPResponse {
 
 extension HTTPResponse {
     
-    public var data: Any? {
-        switch self.body {
-        case .data(let data):
-            return data
-        default:
-            return nil
-        }
+    public var data: Data? {
+        return self.body.data
+    }
+    
+    public var string: String? {
+        return self.body.string
     }
     
     public var json: Any? {
@@ -196,21 +195,6 @@ extension HTTPResponse {
             }
         case .data(let data):
             return try? JSONSerialization.jsonObject(with: data, options: [])
-        default:
-            return nil
-        }
-    }
-    
-    public var string: Any? {
-        switch self.body {
-        case .custom(let any):
-            if let str = any as? String {
-                return str
-            } else {
-                return nil
-            }
-        case .data(let data):
-            return String(bytes: data, encoding: .utf8)
         default:
             return nil
         }

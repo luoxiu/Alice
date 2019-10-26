@@ -24,4 +24,15 @@ extension HTTPResponseBody {
         }
         return file
     }
+    
+    public var string: String? {
+        switch self {
+        case .data(let data):
+            return String(bytes: data, encoding: .utf8)
+        case .file(let url):
+            return try? String(contentsOf: url)
+        default:
+            return nil
+        }
+    }
 }

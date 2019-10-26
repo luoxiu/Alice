@@ -232,7 +232,6 @@ extension HTTPRequest {
     }
     
     public init(_ resumeData: Data) throws {
-        
         enum Lazy {
             static let session = URLSession(configuration: .default)
         }
@@ -276,21 +275,21 @@ extension HTTPRequest {
 
 extension HTTPRequest {
     
-    public func dataTask() -> HTTPTask {
-        return HTTPTask(HTTPClient.shared, self, .data)
-    }
-    
-    public func downloadTask() -> HTTPTask {
-        return HTTPTask(HTTPClient.shared, self, .download)
-    }
-    
-    public func uploadTask() -> HTTPTask {
-        return HTTPTask(HTTPClient.shared, self, .upload)
-    }
-    
-    public func send() -> HTTPTask {
-        let task = self.dataTask()
-        task.start()
-        return task
-    }
+//    public func dataTask() -> HTTPTask {
+//        return HTTPTask(HTTPClient.shared, self, .data)
+//    }
+//    
+//    public func downloadTask() -> HTTPTask {
+//        return HTTPTask(HTTPClient.shared, self, .download)
+//    }
+//    
+//    public func uploadTask() -> HTTPTask {
+//        return HTTPTask(HTTPClient.shared, self, .upload)
+//    }
+//    
+//    public func send() -> HTTPTask {
+//        let task = self.dataTask()
+//        task.start()
+//        return task
+//    }
 }

@@ -2,73 +2,44 @@ import Foundation
 import Async
 import Utility
 
-extension HTTPTask {
-
-    public enum Kind {
-        case data
-        case upload
-        case download
-    }
-}
-
-// TODO: Redesgin init part
-
 open class HTTPTask {
     
-    // MARK: - Properties
+    fileprivate enum State: UInt8 {
+        case initialized = 0x10
+        case processingRequest = 0x20
+        case loading = 0x30
+        case processingResponse = 0x40
+        case finished = 0x50
+    }
     
-    let workQueue: DispatchQueue
-    private let syncQueue: DispatchQueue
+    fileprivate let workQueue: DispatchQueue
     
-    private var _isStarted: Bool
-    private var _kind: Kind
+    fileprivate var state: State
+    fileprivate var middlewares: [HTTPMiddleware]
     
-    private var _middlewares: [HTTPMiddleware]
-    
-    
-    private var _uploadProgress = HTTPProgress(totalUnitCount: 0, completedUnitCount: 0)
-    private var _downloadProgress = HTTPProgress(totalUnitCount: 0, completedUnitCount: 0)
-    
-    public typealias ProgressCallback = (HTTPProgress) -> Void
-    private var uploadProgressCallback: ProgressCallback?
-    private var downloadProgressCallback: ProgressCallback?
-    
-    // MARK: session
     public let client: HTTPClient
     public let request: HTTPRequest
+    fileprivate let sessionResponder: HTTPSessionResponder
+    fileprivate let promise: Promise<HTTPResponse, Error>
     
-    private let sessionResponder: HTTPSessionResponder
+    public typealias ProgressCallback = (HTTPProgress) -> Void
+    fileprivate var whenUploadProgressUpdate: (Scheduler, ProgressCallback)?
+    fileprivate var whenDownloadProgressUpdate: (Scheduler, ProgressCallback)?
     
-    private let responsePromise: Promise<HTTPResponse, Error>
-    public let response: Future<HTTPResponse, Error>
+    fileprivate var sessionTask: URLSessionTask?
+    fileprivate var urlResponse: URLResponse?
+    fileprivate var metrics: URLSessionTaskMetrics?
     
-    // MARK: task
-    private var _sessionTask: URLSessionTask?
-    private var _urlResponse: URLResponse?
-    private var _metrics: URLSessionTaskMetrics?
-    
-    // MARK: data task
-    private var _data: Data?
-    
-    // MARK: download task
-    private var _url: URL?
-    private var _downloadLocation: URL?
-    
-    // MARK: - Init
-    init(_ client: HTTPClient, _ request: HTTPRequest, _ kind: Kind, _ startImmediately: Bool = false) {
-        self._middlewares = []
-        self._isStarted = false
-        self._kind = kind
+    init(_ client: HTTPClient, _ request: HTTPRequest, startImmediately: Bool = true) {
+        self.workQueue = DispatchQueue(label: UUID().uuidString)
+        self.state = .initialized
+        self.middlewares = []
         
         self.client = client
         self.request = request
         
-        self.responsePromise = Promise()
-        self.response = self.responsePromise.future
+        self.promise = Promise()
 
-        self.workQueue = DispatchQueue(label: UUID().uuidString)
-        self.syncQueue = DispatchQueue(label: UUID().uuidString)
-        
         self.sessionResponder = HTTPSessionResponder()
         self.sessionResponder.httpTask = self
         
@@ -77,173 +48,133 @@ open class HTTPTask {
         }
     }
     
-    convenience init(_ client: HTTPClient, _ request: HTTPRequest, _ downloadLocation: URL?) {
-        self.init(client, request, .download)
-        self._downloadLocation = downloadLocation
+    open var response: Future<HTTPResponse, Error> {
+        return self.promise.future
     }
     
-    // MARK: - Methods
-    
-    open var isStarted: Bool {
-        return self.syncQueue.sync {
-            self._isStarted
-        }
-    }
-    
-    open var kind: Kind {
-        return self.syncQueue.sync {
-            self._kind
-        }
-    }
-    
-    // MARK: middlware
+    // MARK: - Middleware
     @discardableResult
-    open func use(_ mw: HTTPMiddleware) -> Self {
-        self.syncQueue.async {
-            self._middlewares.append(mw)
+    open func use(_ middleware: HTTPMiddleware) -> Self {
+        self.workQueue.async {
+            self.middlewares.append(middleware)
         }
         return self
     }
     
-    open var middlewares: [HTTPMiddleware] {
-        return self.syncQueue.sync {
-            Array(self._middlewares)
+    @discardableResult
+    open func use(_ middleware: @escaping (HTTPRequest, HTTPResponder) -> Future<HTTPResponse, Error>) -> Self {
+        self.workQueue.async {
+            self.middlewares.append(HTTPAnyMiddleware(middleware))
         }
-    }
-    
-    // MARK: progress
-    open var uploadProgress: HTTPProgress {
-        return self.syncQueue.sync {
-            self._uploadProgress
-        }
-    }
-    open var downloadProgress: HTTPProgress {
-        return self.syncQueue.sync {
-            self._downloadProgress
-        }
-    }
-    
-    open func onUploadProgress(_ callback: @escaping ProgressCallback) -> Self {
-        self.uploadProgressCallback = callback
         return self
     }
     
-    open func onDownloadProgress(_ callback: @escaping ProgressCallback) -> Self  {
-        self.downloadProgressCallback = callback
+    func getAllMiddlewares(on scheduler: Scheduler) -> Future<[HTTPMiddleware], Never> {
+        let promise = Promise<[HTTPMiddleware], Never>()
+        
+        self.workQueue.async {
+            promise.succeed(self.middlewares)
+        }
+        
+        return promise.future.yield(on: scheduler)
+    }
+    
+    // MARK: - Progress
+    open func whenUploadProgressUpdate(scheduler: Scheduler, _ callback: @escaping ProgressCallback) -> Self {
+        self.workQueue.async {
+            self.whenUploadProgressUpdate = (scheduler, callback)
+        }
         return self
     }
-
-    // MARK: session
-    open var session: URLSession {
-        return self.client.session
-    }
     
-    // MARK: task
-    open var sessionTask: URLSessionTask? {
-        return self.syncQueue.sync {
-            self._sessionTask
+    open func whenDownloadProgressUpdate(scheduler: Scheduler, _ callback: @escaping ProgressCallback) -> Self  {
+        self.workQueue.async {
+            self.whenDownloadProgressUpdate = (scheduler, callback)
         }
-    }
-    
-    open var uploadTask: URLSessionUploadTask? {
-        return self.sessionTask as? URLSessionUploadTask
-    }
-    
-    open var dataTask: URLSessionDataTask? {
-        return self.sessionTask as? URLSessionDataTask
-    }
-    
-    open var downloadTask: URLSessionDownloadTask? {
-        return self.sessionTask as? URLSessionDownloadTask
+        return self
     }
     
     public func start() {
-        self.syncQueue.async {
-            if self._isStarted {
-                return
-            }
-            
-            self._isStarted = true
-            
-            self.client
-            .getAllMiddlewares(on: self.workQueue)
-            .map { middlewares -> HTTPResponder in
-                let allMiddlewares = middlewares + self.middlewares
-                return allMiddlewares.makeResponder(chainingTo: self.sessionResponder)
-            }
-            .whenSucceed { responder in
+        self.client.getAllMiddlewares(on: self.workQueue)
+            .whenSucceed { clientMiddlewares in
+                guard self.state == .initialized else { return }
+                
+                self.state = .processingRequest
+                
+                let responder = (clientMiddlewares + self.middlewares).makeResponder(chainingTo: self.sessionResponder)
                 do {
-                    try responder.respond(to: self.request).pipe(to: self.responsePromise)
+                    try responder.respond(to: self.request).pipe(to: self.promise)
                 } catch let e {
-                    self.responsePromise.fail(e)
+                    self.state = .finished
+                    self.promise.fail(e)
                 }
             }
-        }
     }
     
     public func suspend() {
-        if let task = self.sessionTask {
-            task.suspend()
+        self.workQueue.async {
+            self.sessionTask?.suspend()
         }
     }
     
     public func resume() {
-        if let task = self.sessionTask {
-            task.resume()
+        self.workQueue.async {
+            self.sessionTask?.resume()
         }
     }
     
     public func cancel() {
-        if let task = self.sessionTask {
-            task.cancel()
+        self.workQueue.async {
+            self.state = .finished
+            self.sessionTask?.cancel()
         }
     }
     
-    // MARK: download task
-    open func cancel(byProducingResumeData completionHandler: @escaping (Data?) -> Void) {
-        self.downloadTask?.cancel(byProducingResumeData: {
-            completionHandler($0)
-        })
-    }
 
     // MARK: - Delegate
-    
-    // MARK: task
     
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
         defer {
             self.client.unregister(self, for: task)
         }
         
-        if let error = error {
-            self.sessionResponder.fail(.session(error))
-            return
-        }
-        
-        guard let response = task.response as? HTTPURLResponse, let metrics = self._metrics else {
-            self.sessionResponder.fail(.response(.badResponse("The response from the server should always be an http response.")))
-            return
-        }
-        
-        var body = HTTPResponseBody.none
-        switch self.kind {
-        case .download:
-            if let url = self._url {
-                body = .file(url)
+        self.workQueue.async {
+            guard self.state != .finished else {
+                return
             }
-        case .data, .upload:
-            if let data = self._data {
-                body = .data(data)
+            
+            if let error = error {
+                self.state = .finished
+                self.sessionResponder.fail(.session(error))
+                return
             }
+            
+            self.state = .processingResponse
+            guard let response = task.response as? HTTPURLResponse, let metrics = self.metrics else {
+                self.sessionResponder.fail(.response(.badResponse("impossible")))
+                return
+            }
+            
+            var body = HTTPResponseBody.none
+            
+            switch self {
+            case let downloadTask as HTTPDownloadTask:
+                body = .file(downloadTask.location)
+            case let dataTask as HTTPDataTask:
+                body = .data(dataTask.data)
+            default: break
+            }
+            
+            self.sessionResponder.succeed(HTTPResponse(response, body, metrics))
         }
-        
-        self.sessionResponder.succeed(HTTPResponse(response, body, metrics))
     }
     
     func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) {
+        completionHandler(request)
     }
     
     func urlSession(_ session: URLSession, task: URLSessionTask, didReceive challenge: URLAuthenticationChallenge, completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
+        completionHandler(.performDefaultHandling, nil)
     }
     
     func urlSession(_ session: URLSession, task: URLSessionTask, needNewBodyStream completionHandler: @escaping (InputStream?) -> Void) {
@@ -251,20 +182,18 @@ open class HTTPTask {
     }
     
     func urlSession(_ session: URLSession, task: URLSessionTask, didSendBodyData bytesSent: Int64, totalBytesSent: Int64, totalBytesExpectedToSend: Int64) {
-        let progress = HTTPProgress(totalUnitCount: totalBytesExpectedToSend, completedUnitCount: totalBytesSent)
-        self.syncQueue.async {
-            self._uploadProgress = progress
-            
-            if let callback = self.uploadProgressCallback {
-                self.workQueue.async {
-                    callback(progress)
+        self.workQueue.async {
+            let progress = HTTPProgress(totalUnitCount: totalBytesExpectedToSend, completedUnitCount: totalBytesSent)
+            if let action = self.whenUploadProgressUpdate {
+                action.0.schedule {
+                    action.1(progress)
                 }
             }
         }
     }
     
     func urlSession(_ session: URLSession, task: URLSessionTask, didFinishCollecting metrics: URLSessionTaskMetrics) {
-        self._metrics = metrics
+        self.metrics = metrics
     }
     
     @available(iOS 11.0, macOS 10.13, tvOS 11.0, watchOS 4.0, *)
@@ -272,89 +201,174 @@ open class HTTPTask {
         
         completionHandler(.continueLoading, nil)
     }
+
+}
+
+open class HTTPDataTask: HTTPTask {
     
-    // MARK: data task
+    fileprivate var data = Data()
     
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
-        
-        self._urlResponse = response
+        self.urlResponse = response
+        completionHandler(.allow)
     }
     
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didBecome downloadTask: URLSessionDownloadTask) {
-        self.syncQueue.async {
-            self._kind = .download
-            self.workQueue.async {
-                self.client.unregister(self, for: dataTask)
-                self.client.register(self, for: downloadTask)
-            }
-        }
+        // not supported yet
     }
     
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
-        if self._data == nil {
-            self._data = data
-        } else {        
-            self._data?.append(data)
-        }
-        
-        let total = self._urlResponse?.expectedContentLength ?? 0
-        let completed = self._data?.count ?? 0
+        self.data.append(data)
+
+        let total = self.urlResponse?.expectedContentLength ?? 0
+        let completed = self.data.count
         let progress = HTTPProgress(totalUnitCount: total, completedUnitCount: Int64(completed))
         
-        self.syncQueue.async {
-            self._downloadProgress = progress
-
-            if let callback = self.downloadProgressCallback {
-                self.workQueue.async {
-                    callback(progress)
+        self.workQueue.async {
+            if let action = self.whenDownloadProgressUpdate {
+                action.0.schedule {
+                    action.1(progress)
                 }
             }
         }
     }
     
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, willCacheResponse proposedResponse: CachedURLResponse, completionHandler: @escaping (CachedURLResponse?) -> Void) {
+        completionHandler(proposedResponse)
+    }
+}
 
+open class HTTPUploadTask: HTTPDataTask { }
+
+open class HTTPDownloadTask: HTTPTask {
+    
+    public let location: URL
+    
+    public init(_ client: HTTPClient, _ request: HTTPRequest, _ location: URL, startImmediately: Bool = true) {
+        self.location = location
+        super.init(client, request, startImmediately: startImmediately)
     }
     
-    // MARK: download
+    // MARK: download task
+    open func cancelByProducingResumeData(on scheduler: Scheduler) -> Future<Data?, Never> {
+        let promise = Promise<Data?, Never>()
+        self.workQueue.async {
+            guard let task = self.sessionTask as? URLSessionDownloadTask else {
+                return
+            }
+            task.cancel {
+                promise.succeed($0)
+            }
+        }
+        return promise.future.yield(on: scheduler)
+    }
+    
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
-        
-        if let downloadLocation = self._downloadLocation {
-            do {
-                try FileManager.default.moveItem(at: location, to: downloadLocation)
-                self._url = downloadLocation
-            } catch {
-                self.sessionResponder.fail(.response(.canNotMoveDownloaded))
+        do {
+            try FileManager.default.moveItem(at: location, to: self.location)
+        } catch {
+            self.workQueue.async {
+                self.state = .finished
+                self.sessionResponder.fail(.response(.canNotMoveDownloadedFile(error)))
             }
         }
     }
-    
+       
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didResumeAtOffset fileOffset: Int64, expectedTotalBytes: Int64) {
-        
-        self.syncQueue.async {
-            let progress = HTTPProgress(totalUnitCount: expectedTotalBytes, completedUnitCount: fileOffset)
-            self._downloadProgress = progress
-            
-            if let callback = self.downloadProgressCallback {
-                self.workQueue.async {
-                    callback(progress)
-                }
-            }
-        }
+       
+       self.workQueue.async {
+           let progress = HTTPProgress(totalUnitCount: expectedTotalBytes, completedUnitCount: fileOffset)
+           if let action = self.whenDownloadProgressUpdate {
+               action.0.schedule {
+                   action.1(progress)
+               }
+           }
+       }
     }
-    
+       
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData bytesWritten: Int64, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
-        
-        self.syncQueue.async {
-            let progress = HTTPProgress(totalUnitCount: totalBytesExpectedToWrite, completedUnitCount: totalBytesWritten)
-            self._downloadProgress = progress
-            
-            if let callback = self.downloadProgressCallback {
-                self.workQueue.async {
-                    callback(progress)
+       
+       self.workQueue.async {
+           let progress = HTTPProgress(totalUnitCount: totalBytesExpectedToWrite, completedUnitCount: totalBytesWritten)
+            if let action = self.whenDownloadProgressUpdate {
+                action.0.schedule {
+                    action.1(progress)
                 }
             }
+       }
+    }
+}
+
+extension HTTPTask {
+    
+    enum Kind {
+       case data, upload, download
+   }
+    
+    var kind: Kind {
+        switch self {
+        case is HTTPDownloadTask:   return .download
+        case is HTTPUploadTask:     return .upload
+        default:                    return .data
         }
     }
 }
 
+extension HTTPTask {
+    
+    fileprivate final class HTTPSessionResponder: HTTPResponder {
+        
+        unowned var httpTask: HTTPTask!
+        
+        private let promise: Promise<HTTPResponse, Error>
+        
+        init() {
+            self.promise = Promise()
+        }
+        
+        func respond(to request: HTTPRequest) throws -> Future<HTTPResponse, Error> {
+            let task = try self.sessionTask(for: request)
+            self.httpTask.client.register(self.httpTask, for: task)
+            task.resume()
+            return self.promise.future
+        }
+        
+        func succeed(_ response: HTTPResponse) {
+            self.promise.succeed(response)
+        }
+        
+        func fail(_ error: HTTPError) {
+            self.promise.fail(error)
+        }
+        
+        private func sessionTask(for request: HTTPRequest) throws -> URLSessionTask {
+            let session = self.httpTask.client.session
+            
+            let urlRequest = try request.toURLRequest()
+            
+            switch httpTask.kind {
+            case .data:
+                return session.dataTask(with: urlRequest)
+            case .upload:
+                switch request.body {
+                case .none:
+                    throw HTTPError.request(.missingUploadBody)
+                case .data(let data):
+                    return session.uploadTask(with: urlRequest, from: data)
+                case .file(let url):
+                    return session.uploadTask(with: urlRequest, fromFile: url)
+                case .stream:
+                    return session.uploadTask(withStreamedRequest: urlRequest)
+                }
+            case .download:
+                switch request.resumeData {
+                case .none:
+                    return session.downloadTask(with: urlRequest)
+                case .some(let data):
+                    return session.downloadTask(withResumeData: data)
+                }
+            }
+        }
+    }
+
+}
