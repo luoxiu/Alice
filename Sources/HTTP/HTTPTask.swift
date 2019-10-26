@@ -23,7 +23,7 @@ open class HTTPTask {
     private var _isStarted: Bool
     private var _kind: Kind
     
-    private var _middlewares: Bag<HTTPMiddleware>
+    private var _middlewares: [HTTPMiddleware]
     
     
     private var _uploadProgress = HTTPProgress(totalUnitCount: 0, completedUnitCount: 0)
@@ -56,7 +56,7 @@ open class HTTPTask {
     
     // MARK: - Init
     init(_ client: HTTPClient, _ request: HTTPRequest, _ kind: Kind, _ startImmediately: Bool = false) {
-        self._middlewares = Bag()
+        self._middlewares = []
         self._isStarted = false
         self._kind = kind
         
@@ -103,20 +103,6 @@ open class HTTPTask {
             self._middlewares.append(mw)
         }
         return self
-    }
-    
-    @discardableResult
-    open func use(_ mw: HTTPMiddleware, _ token: inout BagToken) -> Self {
-        self.syncQueue.sync {
-            token = self._middlewares.append(mw)
-        }
-        return self
-    }
-    
-    open func removeMiddleware(for token: BagToken) -> HTTPMiddleware? {
-        return self.syncQueue.sync {
-            self._middlewares.removeValue(for: token)
-        }
     }
     
     open var middlewares: [HTTPMiddleware] {

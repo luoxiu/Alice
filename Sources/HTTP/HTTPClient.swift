@@ -3,8 +3,8 @@ import Utility
 
 open class HTTPClient {
     
-    private var middlewares: Bag<HTTPMiddleware>
     private var taskRegistry: [URLSessionTask: HTTPTask]
+    private var middlewares: [HTTPMiddleware]
     
     private let lock = Lock()
     
@@ -12,7 +12,7 @@ open class HTTPClient {
 
     public init(configuration: URLSessionConfiguration) {
         self.taskRegistry = [:]
-        self.middlewares = Bag()
+        self.middlewares = []
         
         let sessionDelegate = Delegate()
         
@@ -78,14 +78,6 @@ open class HTTPClient {
     }
     
     @discardableResult
-    open func use(_ mw: HTTPMiddleware, _ token: inout BagToken) -> Self {
-        self.lock.withLockVoid {
-            token = self.middlewares.append(mw)
-        }
-        return self
-    }
-    
-    @discardableResult
     open func use(_ mw: HTTPMiddleware, when matcher: HTTPRequestMatcher) -> Self {
         let new = HTTPAnyMiddleware { (request, responder) in
             if matcher.matches(request) {
@@ -95,12 +87,6 @@ open class HTTPClient {
             }
         }
         return self.use(new)
-    }
-    
-    open func removeMiddleware(for token: BagToken) -> HTTPMiddleware? {
-        return self.lock.withLock {
-            self.middlewares.removeValue(for: token)
-        }
     }
     
     open var allMiddlewares: [HTTPMiddleware] {
