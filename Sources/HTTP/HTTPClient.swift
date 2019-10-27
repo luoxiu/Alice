@@ -105,6 +105,17 @@ open class HTTPClient {
         return HTTPDataTask(self, request, startImmediately: true)
     }
     
+    open func request(_ method: HTTPMethod, _ url: HTTPURL, _ headers: HTTPHeaders? = nil, _ body: HTTPRequestBody? = nil) -> HTTPDataTask {
+        var request = HTTPRequest(method: method, url: url)
+        if let headers = headers {
+            request.headers = headers
+        }
+        if let body = body {
+            request.body = body
+        }
+        return HTTPDataTask(self, request, startImmediately: true)
+    }
+    
     open func download(_ request: HTTPRequest, to location: URL) -> HTTPDownloadTask {
         return HTTPDownloadTask(self, request, location, startImmediately: true)
     }

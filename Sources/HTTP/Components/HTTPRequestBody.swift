@@ -79,7 +79,13 @@ extension HTTPRequestBody {
         }
     }
     
-    public var jsonObject: Any? {
+    public static func string(_ string: String) -> HTTPRequestBody {
+        var body = HTTPRequestBody.none
+        body.string = string
+        return body
+    }
+    
+    public var json: Any? {
         get {
             switch self {
             case .data(let data):
@@ -95,5 +101,11 @@ extension HTTPRequestBody {
                 self = .none
             }
         }
+    }
+    
+    public static func json(_ json: Any) -> HTTPRequestBody {
+        var body = HTTPRequestBody.none
+        body.json = json
+        return body
     }
 }
