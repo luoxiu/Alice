@@ -3,18 +3,18 @@ import Async
 
 public protocol HTTPMiddleware {
     
-    func respond(to req: HTTPRequest, chainingTo next: HTTPResponder) throws -> Future<HTTPResponse, Error>
+    func respond(to req: HTTPRequest, chainingTo next: HTTPResponder) throws -> Future<HTTPResponse, HTTPError>
 }
 
 public struct HTTPAnyMiddleware: HTTPMiddleware {
     
-    private let body: (_ req: HTTPRequest, _ next: HTTPResponder) throws -> Future<HTTPResponse, Error>
+    private let body: (_ req: HTTPRequest, _ next: HTTPResponder) throws -> Future<HTTPResponse, HTTPError>
     
-    public init(_ body: @escaping (_ req: HTTPRequest, _ next: HTTPResponder) throws -> Future<HTTPResponse, Error>) {
+    public init(_ body: @escaping (_ req: HTTPRequest, _ next: HTTPResponder) throws -> Future<HTTPResponse, HTTPError>) {
         self.body = body
     }
     
-    public func respond(to req: HTTPRequest, chainingTo next: HTTPResponder) throws -> Future<HTTPResponse, Error> {
+    public func respond(to req: HTTPRequest, chainingTo next: HTTPResponder) throws -> Future<HTTPResponse, HTTPError> {
         return try body(req, next)
     }
 }

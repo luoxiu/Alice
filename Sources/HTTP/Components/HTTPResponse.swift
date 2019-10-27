@@ -178,25 +178,23 @@ extension HTTPResponse {
 extension HTTPResponse {
     
     public var data: Data? {
-        return self.body.data
+        get { return self.body.data }
+        set { self.body.data = newValue }
+    }
+    
+    public var file: URL? {
+        get { return self.body.file }
+        set { self.body.file = newValue }
     }
     
     public var string: String? {
-        return self.body.string
+        get { return self.body.string }
+        set { self.body.string = newValue }
     }
     
+    
     public var json: Any? {
-        switch self.body {
-        case .custom(let any):
-            if JSONSerialization.isValidJSONObject(any) {
-                return any
-            } else {
-                return nil
-            }
-        case .data(let data):
-            return try? JSONSerialization.jsonObject(with: data, options: [])
-        default:
-            return nil
-        }
+        get { return self.body.json }
+        set { self.body.json = newValue }
     }
 }

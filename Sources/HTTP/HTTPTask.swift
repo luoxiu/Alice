@@ -20,7 +20,7 @@ open class HTTPTask {
     public let client: HTTPClient
     public let request: HTTPRequest
     fileprivate let sessionResponder: HTTPSessionResponder
-    fileprivate let promise: Promise<HTTPResponse, Error>
+    fileprivate let promise: Promise<HTTPResponse, HTTPError>
     
     public typealias ProgressCallback = (HTTPProgress) -> Void
     fileprivate var whenUploadProgressUpdate: (Scheduler, ProgressCallback)?
@@ -48,22 +48,24 @@ open class HTTPTask {
         }
     }
     
-    open var response: Future<HTTPResponse, Error> {
+    open var response: Future<HTTPResponse, HTTPError> {
         return self.promise.future
     }
     
-    // MARK: - Middleware
+    // MARK: Middleware
     @discardableResult
     open func use(_ middleware: HTTPMiddleware) -> Self {
         self.workQueue.async {
+            guard self.state == .initialized else { return }
             self.middlewares.append(middleware)
         }
         return self
     }
     
     @discardableResult
-    open func use(_ middleware: @escaping (HTTPRequest, HTTPResponder) -> Future<HTTPResponse, Error>) -> Self {
+    open func use(_ middleware: @escaping (HTTPRequest, HTTPResponder) -> Future<HTTPResponse, HTTPError>) -> Self {
         self.workQueue.async {
+            guard self.state == .initialized else { return }
             self.middlewares.append(HTTPAnyMiddleware(middleware))
         }
         return self
@@ -79,7 +81,7 @@ open class HTTPTask {
         return promise.future.yield(on: scheduler)
     }
     
-    // MARK: - Progress
+    // MARK: Progress
     open func whenUploadProgressUpdate(scheduler: Scheduler, _ callback: @escaping ProgressCallback) -> Self {
         self.workQueue.async {
             self.whenUploadProgressUpdate = (scheduler, callback)
@@ -106,7 +108,7 @@ open class HTTPTask {
                     try responder.respond(to: self.request).pipe(to: self.promise)
                 } catch let e {
                     self.state = .finished
-                    self.promise.fail(e)
+                    self.promise.fail(e.asHTTPError())
                 }
             }
     }
@@ -129,7 +131,6 @@ open class HTTPTask {
             self.sessionTask?.cancel()
         }
     }
-    
 
     // MARK: - Delegate
     
@@ -198,7 +199,6 @@ open class HTTPTask {
     
     @available(iOS 11.0, macOS 10.13, tvOS 11.0, watchOS 4.0, *)
     func urlSession(_ session: URLSession, task: URLSessionTask, willBeginDelayedRequest request: URLRequest, completionHandler: @escaping (URLSession.DelayedRequestDisposition, URLRequest?) -> Void) {
-        
         completionHandler(.continueLoading, nil)
     }
 
@@ -249,7 +249,6 @@ open class HTTPDownloadTask: HTTPTask {
         super.init(client, request, startImmediately: startImmediately)
     }
     
-    // MARK: download task
     open func cancelByProducingResumeData(on scheduler: Scheduler) -> Future<Data?, Never> {
         let promise = Promise<Data?, Never>()
         self.workQueue.async {
@@ -320,13 +319,13 @@ extension HTTPTask {
         
         unowned var httpTask: HTTPTask!
         
-        private let promise: Promise<HTTPResponse, Error>
+        private let promise: Promise<HTTPResponse, HTTPError>
         
         init() {
             self.promise = Promise()
         }
         
-        func respond(to request: HTTPRequest) throws -> Future<HTTPResponse, Error> {
+        func respond(to request: HTTPRequest) throws -> Future<HTTPResponse, HTTPError> {
             let task = try self.sessionTask(for: request)
             self.httpTask.client.register(self.httpTask, for: task)
             task.resume()
@@ -352,7 +351,7 @@ extension HTTPTask {
             case .upload:
                 switch request.body {
                 case .none:
-                    throw HTTPError.request(.missingUploadBody)
+                    throw HTTPError.request(.badRequest("body not found in upload request"))
                 case .data(let data):
                     return session.uploadTask(with: urlRequest, from: data)
                 case .file(let url):

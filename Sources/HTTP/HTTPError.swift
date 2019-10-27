@@ -13,9 +13,8 @@ public enum HTTPError: Error {
     
     // Request Error
     public enum RequestErrorReason {
-        case missingURL
         case invalidResumeData(Data)
-        case missingUploadBody
+        case badRequest(String?)
     }
     case request(RequestErrorReason)
     
@@ -26,7 +25,7 @@ public enum HTTPError: Error {
     }
     case response(ResponseErrorReason)
     
-    // Client Error
+    // URLSession Error
     case session(Error)
     
     case jsonSerialization(Data, Error)

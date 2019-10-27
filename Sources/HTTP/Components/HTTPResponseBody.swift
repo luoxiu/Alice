@@ -5,34 +5,81 @@ public enum HTTPResponseBody {
     case none
     case data(Data)
     case file(URL)
-    
-    case custom(Any)
 }
 
 extension HTTPResponseBody {
     
     public var data: Data? {
-        guard case .data(let data) = self else {
-            return nil
+        get {
+            switch self {
+            case .data(let data):   return data
+            case .file(let url):    return try? Data(contentsOf: url)
+            default:                return nil
+            }
         }
-        return data
+        set {
+            if let data = newValue {
+                self = .data(data)
+                return
+            }
+            self = .none
+        }
     }
     
     public var file: URL? {
-        guard case .file(let file) = self else {
-            return nil
+        get {
+            switch self {
+            case .file(let url):    return url
+            default:                return nil
+            }
         }
-        return file
+        set {
+            if let url = newValue {
+                self = .file(url)
+                return
+            }
+            self = .none
+        }
     }
     
     public var string: String? {
-        switch self {
-        case .data(let data):
-            return String(bytes: data, encoding: .utf8)
-        case .file(let url):
-            return try? String(contentsOf: url)
-        default:
-            return nil
+        get {
+            switch self {
+            case .data(let data):
+                return String(bytes: data, encoding: .utf8)
+            case .file(let url):
+                return try? String(contentsOf: url)
+            case .none:
+                return nil
+            }
+        }
+        set {
+            if let string = newValue, let data = string.data(using: .utf8) {
+                self = .data(data)
+                return
+            }
+            self = .none
+        }
+    }
+    
+    public var json: Any? {
+        get {
+            switch self {
+            case .data(let data):
+                return try? JSONSerialization.jsonObject(with: data, options: [])
+            case .file(let url):
+                guard let data = try? Data(contentsOf: url) else { return nil }
+                return try? JSONSerialization.jsonObject(with: data, options: [])
+            case .none:
+                return nil
+            }
+        }
+        set {
+            if let json = newValue, let data = try? JSONSerialization.data(withJSONObject: json, options: []) {
+                self = .data(data)
+                return
+            }
+            self = .none
         }
     }
 }

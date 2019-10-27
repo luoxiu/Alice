@@ -71,7 +71,7 @@ open class HTTPClient {
     }
     
     @discardableResult
-    open func use(_ middleware: @escaping (HTTPRequest, HTTPResponder) -> Future<HTTPResponse, Error>) -> Self {
+    open func use(_ middleware: @escaping (HTTPRequest, HTTPResponder) -> Future<HTTPResponse, HTTPError>) -> Self {
         self.workQueue.async(flags: .barrier) {
             self.middlewares.append(HTTPAnyMiddleware(middleware))
         }

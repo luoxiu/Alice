@@ -177,7 +177,7 @@ extension HTTPRequest {
 
 extension HTTPRequest {
     
-    public func toURLRequest() throws -> URLRequest {
+    func toURLRequest() throws -> URLRequest {
         let url = try self.url.toValidURL().get()
         
         var req = URLRequest(url: url)
@@ -201,9 +201,9 @@ extension HTTPRequest {
         return req
     }
     
-    public init(_ urlRequest: URLRequest) throws {
+    init(_ urlRequest: URLRequest) throws {
         guard let url = urlRequest.url else {
-            throw HTTPError.request(.missingURL)
+            throw HTTPError.request(.badRequest("URL not found in URLRequest"))
         }
         
         let httpURL = url.toHTTPURL()
@@ -231,7 +231,7 @@ extension HTTPRequest {
         self.httpShouldUsePipelining = urlRequest.httpShouldUsePipelining
     }
     
-    public init(_ resumeData: Data) throws {
+    init(_ resumeData: Data) throws {
         enum Lazy {
             static let session = URLSession(configuration: .default)
         }
@@ -271,25 +271,4 @@ extension HTTPRequest {
             return storage
         }
     }
-}
-
-extension HTTPRequest {
-    
-//    public func dataTask() -> HTTPTask {
-//        return HTTPTask(HTTPClient.shared, self, .data)
-//    }
-//    
-//    public func downloadTask() -> HTTPTask {
-//        return HTTPTask(HTTPClient.shared, self, .download)
-//    }
-//    
-//    public func uploadTask() -> HTTPTask {
-//        return HTTPTask(HTTPClient.shared, self, .upload)
-//    }
-//    
-//    public func send() -> HTTPTask {
-//        let task = self.dataTask()
-//        task.start()
-//        return task
-//    }
 }

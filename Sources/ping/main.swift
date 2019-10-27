@@ -6,7 +6,7 @@ HTTPClient.shared.get("https://reqres.in/api/users?page=2")
     .whenComplete {
         switch $0 {
         case .success(let r):
-            print(r.string ?? "no body")
+            print(r.json ?? "no body")
         case .failure(let e):
             print(e)
         }
