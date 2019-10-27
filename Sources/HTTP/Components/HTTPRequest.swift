@@ -113,6 +113,7 @@ public struct HTTPRequest {
 extension HTTPRequest {
     
     // MARK: - Chainable
+    
     public func mMethod(_ method: HTTPMethod) -> HTTPRequest {
         var request = self
         request.method = method
@@ -125,9 +126,21 @@ extension HTTPRequest {
         return request
     }
     
+    public func mURL(_ mutate: (inout HTTPURL) -> Void) -> HTTPRequest {
+        var request = self
+        mutate(&request.url)
+        return request
+    }
+    
     public func mHeaders(_ headers: HTTPHeaders) -> HTTPRequest {
         var request = self
         request.headers = headers
+        return request
+    }
+    
+    public func mHeaders(_ mutate: (inout HTTPHeaders) -> Void) -> HTTPRequest {
+        var request = self
+        mutate(&request.headers)
         return request
     }
     

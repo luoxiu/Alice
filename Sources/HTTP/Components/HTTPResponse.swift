@@ -10,8 +10,13 @@ public struct HTTPResponse {
     
     public var metrics: URLSessionTaskMetrics
     
-    init(_ response: HTTPURLResponse, _ body: HTTPResponseBody, _ metrics: URLSessionTaskMetrics) {
+    public let request: HTTPRequest
+    
+    init(_ request: HTTPRequest, _ response: HTTPURLResponse, _ body: HTTPResponseBody, _ metrics: URLSessionTaskMetrics) {
+        self.request = request
+        
         guard let url = response.url else {
+            // TODO: use error
             preconditionFailure(#"HTTPRepsonse's url should always be a valid "HTTPURL"."#)
         }
         
@@ -103,54 +108,6 @@ public struct HTTPResponse {
             }
             self.properties.textEncoding = newValue
         }
-    }
-    
-}
-
-extension HTTPResponse {
-    
-    // MARK: - Chainable
-    
-    public func mURL(_ url: HTTPURL) -> HTTPResponse {
-        var response = self
-        response.url = url
-        return response
-    }
-    
-    public func mStatus(_ status: HTTPResponseStatus) -> HTTPResponse {
-        var response = self
-        response.status = status
-        return response
-    }
-    
-    public func mHeaders(_ headers: HTTPHeaders) -> HTTPResponse {
-        var response = self
-        response.headers = headers
-        return response
-    }
-    
-    public func mExpectedContentLenght(_ expectedContentLenght: Int64) -> HTTPResponse {
-        var response = self
-        response.expectedContentLenght = expectedContentLenght
-        return response
-    }
-    
-    public func mSuggestedFilename(_ suggestedFilename: String) -> HTTPResponse {
-        var response = self
-        response.suggestedFilename = suggestedFilename
-        return response
-    }
-    
-    public func mMIMEType(_ mimeType: HTTPMIMEType) -> HTTPResponse {
-        var response = self
-        response.mimeType = mimeType
-        return response
-    }
-    
-    public func mTextEncoding(_ textEncoding: String.Encoding) -> HTTPResponse {
-        var response = self
-        response.textEncoding = textEncoding
-        return response
     }
 }
 

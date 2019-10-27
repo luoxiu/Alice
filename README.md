@@ -23,33 +23,35 @@ These libraries will be split into their own repositories in the official releas
 
 ```swift
 let client = HTTPClient()
-client.use { (req, next) in
-    return try next.respond(to: req)
-        .catch { e in
-            LOG.error("[HTTP]: \(req.method) \(req.url) \(e)")
-        }
-}
 
 client.use { (req, next) in
     let tag = Date()
-    return try next.respond(to: req).map {
+    return try next.respond(to: req).with {
         $0.headers.set("\(Date().timeIntervalSince(tag))", for: "Time-Spent")
     }
 }
 
-client.use(AuthMiddleware(), when: .path("/users"))
-
-let task = client.get("https://api.alice.com/user")
-
-// task.text // -> Future<String, HTTPError>
-// task.json // -> Future<JSON, HTTPError>
-
-task.response
-    .map { 
-        User.init
+let authMiddleware = HTTPAnyMiddleware { (req, next) in
+    let newReq = req.mHeaders {
+        $0.set("bearer a1b2c3", for: .authorization)
     }
-    .then {
-        updateUI()
+    return try next.respond(to: newReq)
+}
+client.use(authMiddleware, when: .path("users"))
+
+client.get("https://reqres.in/api/users/2")
+    .response
+    .whenComplete {
+        switch $0 {
+        case .success(let r):
+            print(r.request.headers.value(for: .authorization) as Any)  // a1b2c3
+            print(r.headers.value(for: "Time-Spent") as Any)            // 0.02
+            print(r.statusCode, r.statusMessage)                        // 200 OK
+            print(r.json as Any)                                        // ["data": ["id": 2, "email": "q@reqres.in"]]
+            print(r.string as Any)                                      // "{\"data\":{\"id\":2,\"email\":\"janet.weaver@reqres.in\"}}"
+        case .failure(let e):
+            print(e)
+        }
     }
 ```
 

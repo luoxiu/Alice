@@ -18,7 +18,9 @@ open class HTTPTask {
     fileprivate var middlewares: [HTTPMiddleware]
     
     public let client: HTTPClient
-    public let request: HTTPRequest
+    public let originalRequest: HTTPRequest
+    
+    fileprivate var request: HTTPRequest?
     fileprivate let sessionResponder: HTTPSessionResponder
     fileprivate let promise: Promise<HTTPResponse, HTTPError>
     
@@ -36,7 +38,7 @@ open class HTTPTask {
         self.middlewares = []
         
         self.client = client
-        self.request = request
+        self.originalRequest = request
         
         self.promise = Promise()
 
@@ -105,7 +107,7 @@ open class HTTPTask {
                 
                 let responder = (clientMiddlewares + self.middlewares).makeResponder(chainingTo: self.sessionResponder)
                 do {
-                    try responder.respond(to: self.request).pipe(to: self.promise)
+                    try responder.respond(to: self.originalRequest).pipe(to: self.promise)
                 } catch let e {
                     self.state = .finished
                     self.promise.fail(e.asHTTPError())
@@ -166,7 +168,12 @@ open class HTTPTask {
             default: break
             }
             
-            self.sessionResponder.succeed(HTTPResponse(response, body, metrics))
+            // TODO: use error
+            guard let request = self.request else {
+                preconditionFailure("should exist")
+            }
+            
+            self.sessionResponder.succeed(HTTPResponse(request, response, body, metrics))
         }
     }
     
@@ -179,7 +186,7 @@ open class HTTPTask {
     }
     
     func urlSession(_ session: URLSession, task: URLSessionTask, needNewBodyStream completionHandler: @escaping (InputStream?) -> Void) {
-        completionHandler(self.request.body.stream)
+        completionHandler(self.originalRequest.body.stream)
     }
     
     func urlSession(_ session: URLSession, task: URLSessionTask, didSendBodyData bytesSent: Int64, totalBytesSent: Int64, totalBytesExpectedToSend: Int64) {
@@ -326,6 +333,8 @@ extension HTTPTask {
         }
         
         func respond(to request: HTTPRequest) throws -> Future<HTTPResponse, HTTPError> {
+            self.httpTask.request = request
+            
             let task = try self.sessionTask(for: request)
             self.httpTask.client.register(self.httpTask, for: task)
             task.resume()
